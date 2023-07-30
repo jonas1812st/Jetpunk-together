@@ -34,33 +34,38 @@ io.on("connection", (socket) => {
         .min(3)
         .max(30)
         .required(),
-      "room id": Joi.string()
+      roomId: Joi.string()
         .trim()
         .alphanum()
         .min(3)
         .max(30)
-        .required(),
-      "session id": Joi.string()
+        .required()
+        .label("room id"),
+      sessionId: Joi.string()
         .trim()
         .alphanum()
-        .required(),
+        .required()
+        .label("session id"),
     });
 
-    const data = schema.validate({
-      name: "jonas",
-      "room id": "3>",
-      "session id": undefined
+    const validation = schema.validate({
+      name: name,
+      roomId: roomId,
+      sessionId: sessionId
     });
 
-    if (data.error) {
-      const errorMessage = data.error.details[0].message;
+    if (validation.error) {
+      const errorMessage = validation.error.details[0].message;
       console.log(errorMessage);
       socket.emit("found error", errorMessage);
     } else {
-      console.log("joining room", data);
+      const data = validation.value;
+      
+      const info = store.newUser(data.sessionId, data.name, data.roomId);
+      console.log(info);
+      // TODO worked out finish here
     }
   });
-
   socket.on("game ended", () => {
     console.log("game ended", socket.profile);
   });
