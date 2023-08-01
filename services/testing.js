@@ -1,7 +1,6 @@
 const check = require("../services/check");
 const crypto = require("crypto");
+const rooms = require("../services/rooms");
 
-setInterval(() => {
-  const n = crypto.randomInt(100000, 1000000);
-  console.log(n);
-}, 100);
+const room = rooms.getRoom("E2EBFB");
+console.log(room);

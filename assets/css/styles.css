@@ -1,0 +1,34 @@
+.jt-container {
+  padding: 10px;
+  height: 150px;
+  border: 2px solid #41c9f2;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  background-color: #cff3fd;
+  box-shadow: 0px 4px 13px -8px black;
+  overflow: auto;
+}
+
+.jt-ml {
+  margin-left: 10px;
+}
+
+.jt-font {
+  font-size: 18px;
+}
+
+.jt-table td,
+.jt-table th {
+  padding: 6px;
+  font-size: 16px;
+}
+
+.jt-table-ro td {
+  padding: 6px;
+  font-size: 16px;
+  vertical-align: top;
+}
+
+.owner-panel table {
+  width: 100%;
+}
