@@ -29,19 +29,71 @@ server.listen(process.env.PORT, () => {
 io.on("connection", (socket) => {
 
   console.log("socket connected", socket.id);
+  socket.profile = {};
 
-  socket.on("login", sessionId => {
-    const user = getUser(sessionId);
-    if(user){
-      socket.emit("logged in", user);
+  socket.on("login", (sessionId) => {
+    const validation = loginSchema.validate({
+      sessionId: sessionId
+    });
+
+    if (validation.error) {
+      console.log("found error while authenticating");
+      const errorMessage = validation.error.details[0].message;
+      console.log(errorMessage);
+      socket.emit("found error", errorMessage);
+
+      return false;
+    }
+
+    socket.profile.sessionId = sessionId;
+
+    const user = users.getUser(sessionId);
+    if (user) {
+      const ownRoom = rooms.isOwner(user.id);
+      if (ownRoom) {
+        const participants = rooms.getParticipants(ownRoom.id);
+        socket.join(ownRoom.room);
+        socket.profile.id = user.id;
+        socket.profile.roomId = ownRoom.id;
+        socket.profile.roomCode = ownRoom.room;
+        socket.emit("logged in", {
+          id: user.id,
+          username: user.username,
+          isAdmin: true
+        }, {
+          room: ownRoom.room,
+          quiz: ownRoom.quiz,
+          participants: participants.map(el => ({
+            id: el.id,
+            username: el.username,
+            ready: el.ready
+          }))
+        });
+      } else {
+        const joinedRoom = rooms.getRoomById(user.room);
+        socket.join(joinedRoom.room);
+        socket.profile.id = user.id;
+        socket.profile.roomId = user.room;
+        socket.profile.roomCode = joinedRoom.room;
+        socket.emit("logged in", {
+          id: user.id,
+          username: user.username,
+          isAdmin: false
+        }, {
+          room: joinedRoom.room,
+          quiz: joinedRoom.quiz
+        });
+      }
+
+    } else {
+      socket.emit("log in");
     };
   });
 
-  socket.on("join room", (name, roomId, sessionId, quiz) => {
+  socket.on("join room", (name, roomId, quiz) => {
     const validation = userSchema.validate({
       name: name,
       roomId: roomId,
-      sessionId: sessionId,
       quiz: quiz
     });
 
@@ -54,18 +106,32 @@ io.on("connection", (socket) => {
       const data = validation.value;
 
       try {
-        if (!check.sessIdExists(sessionId)) {
+        if (!check.sessIdExists(socket.profile.sessionId)) {
           const room = rooms.getRoom(data.roomId);
           if (!room) {
             socket.emit("found error", "room not found");
           } else {
-            const info = users.newUser(data.sessionId, data.name, room.id);
+            const info = users.newUser(socket.profile.sessionId, data.name, room.id, 0);
             console.log(info);
 
+            io.to(data.roomId).emit("new user", ({
+              id: info.lastInsertRowid,
+              username: data.name,
+              ready: 0
+            }));
+
             socket.join(data.roomId);
+            socket.profile.id = info.lastInsertRowid;
+            socket.profile.roomId = room.id;
+            socket.profile.roomCode = data.roomId;
+
 
             socket.emit("connected to room", {
-              isAdmin: false,
+              id: info.lastInsertRowid,
+              username: data.name,
+              isAdmin: false
+            }, {
+              room: room.room,
               quiz: room.quiz
             });
           }
@@ -80,10 +146,9 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("create room", (name, sessionId, quiz) => {
+  socket.on("create room", (name, quiz) => {
     const validation = roomSchema.validate({
       name: name,
-      sessionId: sessionId,
       quiz: quiz
     });
 
@@ -94,24 +159,59 @@ io.on("connection", (socket) => {
       socket.emit("found error", errorMessage);
     } else {
       // store all infos in database
-      const data = validation.value;
-      const room = crypto.randomBytes(3).toString("hex").toUpperCase();
-      const newUser = users.newUser(data.sessionId, data.name, "");
-      const newRoom = rooms.newRoom(newUser.lastInsertRowid, room, data.quiz);
-      const updatedUser = rooms.updateUserRoom(newUser.lastInsertRowid, newRoom.lastInsertRowid);
+      try {
+        const data = validation.value;
+        const room = crypto.randomBytes(3).toString("hex").toUpperCase();
+        const newUser = users.newUser(socket.profile.sessionId, data.name, "", 1);
+        const newRoom = rooms.newRoom(newUser.lastInsertRowid, room, data.quiz);
+        const updatedUser = rooms.updateUserRoom(newUser.lastInsertRowid, newRoom.lastInsertRowid);
+        const participants = rooms.getParticipants(newRoom.lastInsertRowid);
 
-      socket.join(room);
+        socket.join(room);
+        socket.profile.id = newUser.lastInsertRowid;
+        socket.profile.roomId = newRoom.lastInsertRowid;
+        socket.profile.roomCode = room;
 
-      // let user know about connection
-      socket.emit("connected to room", {
-        isAdmin: true,
-        quiz: data.quiz
-      });
+        // let user know about connection
+        socket.emit("connected to room", {
+          id: newUser.lastInsertRowid,
+          username: data.name,
+          isAdmin: true
+        }, {
+          room: room,
+          quiz: data.quiz,
+          participants: participants.map(el => ({
+            id: el.id,
+            username: el.username,
+            ready: el.ready
+          }))
+        });
+      } catch (error) {
+        console.log(error);
+        socket.emit("found error", "error while storing user and room data");
+      }
     }
   });
 
+  socket.on("ready", () => {
+    try {
+      const changedState = users.userReadyState(socket.profile.sessionId, 1);
+      socket.profile.ready = 1;
+
+      io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
+    } catch (error) {
+      console.log(error);
+      socket.emit("found error", "error while changing ready state of user");
+    }
+
+  })
+
   socket.on("game ended", () => {
     console.log("game ended", socket.profile);
+  });
+
+  socket.on("test", () => {
+    console.log(socket.profile);
   });
 
 });
@@ -133,11 +233,6 @@ const userSchema = Joi.object({
     .max(30)
     .required()
     .label("room id"),
-  sessionId: Joi.string()
-    .trim()
-    .alphanum()
-    .required()
-    .label("session id"),
   quiz: Joi.string()
     .trim()
     .required()
@@ -147,7 +242,7 @@ const userSchema = Joi.object({
     .label("quiz")
 });
 
-// TODO combine roomSchema and userSchema in one single schema that works for both
+// TODO combine the schemas in one single schema that works for all
 const roomSchema = Joi.object({
   name: Joi.string()
     .trim()
@@ -155,11 +250,6 @@ const roomSchema = Joi.object({
     .min(3)
     .max(30)
     .required(),
-  sessionId: Joi.string()
-    .trim()
-    .alphanum()
-    .required()
-    .label("session id"),
   quiz: Joi.string()
     .trim()
     .required()
@@ -167,4 +257,12 @@ const roomSchema = Joi.object({
       name: 'quiz name'
     })
     .label("quiz")
+});
+
+const loginSchema = Joi.object({
+  sessionId: Joi.string()
+    .trim()
+    .alphanum()
+    .required()
+    .label("session id")
 });
