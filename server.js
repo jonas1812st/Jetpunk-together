@@ -61,7 +61,7 @@ io.on("connection", (socket) => {
           username: user.username,
           isAdmin: true
         }, {
-          room: ownRoom.room,
+          code: ownRoom.room,
           quiz: ownRoom.quiz,
           participants: participants.map(el => ({
             id: el.id,
@@ -80,7 +80,7 @@ io.on("connection", (socket) => {
           username: user.username,
           isAdmin: false
         }, {
-          room: joinedRoom.room,
+          code: joinedRoom.room,
           quiz: joinedRoom.quiz
         });
       }
@@ -131,7 +131,7 @@ io.on("connection", (socket) => {
               username: data.name,
               isAdmin: false
             }, {
-              room: room.room,
+              code: room.room,
               quiz: room.quiz
             });
           }
@@ -178,7 +178,7 @@ io.on("connection", (socket) => {
           username: data.name,
           isAdmin: true
         }, {
-          room: room,
+          code: room,
           quiz: data.quiz,
           participants: participants.map(el => ({
             id: el.id,
