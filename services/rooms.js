@@ -36,6 +36,12 @@ function getParticipants(id) {
   return participants;
 }
 
+function setRoomState(room_id, state) {
+  const info = db.run("UPDATE rooms SET state = ? WHERE id = ?;", [state, room_id]);
+
+  return info;
+}
+
 module.exports = Object.assign(
   module.exports, {
     newRoom,
@@ -43,5 +49,6 @@ module.exports = Object.assign(
     getRoom,
     getRoomById,
     isOwner,
-    getParticipants
+    getParticipants,
+    setRoomState
   });

@@ -25,6 +25,7 @@ server.listen(process.env.PORT, () => {
   console.log("Server running on port " + process.env.PORT);
 });
 
+var disconnectedUsers = [];
 
 io.on("connection", (socket) => {
 
@@ -47,6 +48,14 @@ io.on("connection", (socket) => {
 
     socket.profile.sessionId = sessionId;
 
+    // check if user disconnected less than 5 seconds ago
+    const disconnectedSessionIds = disconnectedUsers.map(el => el.sessionId);
+    if (disconnectedSessionIds.includes(sessionId)) {
+      const index = disconnectedSessionIds.indexOf(sessionId)
+      clearTimeout(disconnectedUsers[index].timeout);
+      disconnectedUsers.splice(index, 1);
+    };
+
     const user = users.getUser(sessionId);
     if (user) {
       const ownRoom = rooms.isOwner(user.id);
@@ -54,12 +63,16 @@ io.on("connection", (socket) => {
         const participants = rooms.getParticipants(ownRoom.id);
         socket.join(ownRoom.room);
         socket.profile.id = user.id;
+        socket.profile.ready = user.ready;
         socket.profile.roomId = ownRoom.id;
         socket.profile.roomCode = ownRoom.room;
+        socket.profile.isAdmin = true;
+
         socket.emit("logged in", {
           id: user.id,
           username: user.username,
-          isAdmin: true
+          isAdmin: true,
+          ready: 1
         }, {
           code: ownRoom.room,
           quiz: ownRoom.quiz,
@@ -73,12 +86,16 @@ io.on("connection", (socket) => {
         const joinedRoom = rooms.getRoomById(user.room);
         socket.join(joinedRoom.room);
         socket.profile.id = user.id;
+        socket.profile.ready = user.ready;
         socket.profile.roomId = user.room;
         socket.profile.roomCode = joinedRoom.room;
+        socket.profile.isAdmin = false;
+
         socket.emit("logged in", {
           id: user.id,
           username: user.username,
-          isAdmin: false
+          isAdmin: false,
+          ready: user.ready
         }, {
           code: joinedRoom.room,
           quiz: joinedRoom.quiz
@@ -122,14 +139,16 @@ io.on("connection", (socket) => {
 
             socket.join(data.roomId);
             socket.profile.id = info.lastInsertRowid;
+            socket.profile.ready = 0;
             socket.profile.roomId = room.id;
             socket.profile.roomCode = data.roomId;
-
+            socket.profile.isAdmin = false;
 
             socket.emit("connected to room", {
               id: info.lastInsertRowid,
               username: data.name,
-              isAdmin: false
+              isAdmin: false,
+              ready: 0
             }, {
               code: room.room,
               quiz: room.quiz
@@ -169,14 +188,17 @@ io.on("connection", (socket) => {
 
         socket.join(room);
         socket.profile.id = newUser.lastInsertRowid;
+        socket.profile.ready = 1;
         socket.profile.roomId = newRoom.lastInsertRowid;
         socket.profile.roomCode = room;
+        socket.profile.isAdmin = true;
 
         // let user know about connection
         socket.emit("connected to room", {
           id: newUser.lastInsertRowid,
           username: data.name,
-          isAdmin: true
+          isAdmin: true,
+          ready: 1
         }, {
           code: room,
           quiz: data.quiz,
@@ -195,16 +217,62 @@ io.on("connection", (socket) => {
 
   socket.on("ready", () => {
     try {
-      const changedState = users.userReadyState(socket.profile.sessionId, 1);
-      socket.profile.ready = 1;
-
-      io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
+      if (!socket.profile.ready) {
+        const changedState = users.setReadyState(socket.profile.sessionId, 1);
+        socket.profile.ready = 1;
+        io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
+      } else {
+        const changedState = users.setReadyState(socket.profile.sessionId, 0);
+        socket.profile.ready = 0;
+        io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
+      }
     } catch (error) {
       console.log(error);
       socket.emit("found error", "error while changing ready state of user");
     }
+  });
 
-  })
+  socket.on("start game", () => {
+    if (check.usersReady(socket.profile.roomId)) {
+      try {
+        const info = rooms.setRoomState("started");
+
+        io.to(socket.profile.roomCode).emit("game started");
+
+      } catch (error) {
+        console.log(error);
+        socket.emit("found error", "error while changing state of game to 'started'");
+      }
+    } else {
+      console.log("not all players in room are ready to start");
+      socket.emit("found error", "not all players in room are ready to start");
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.profile.roomCode) {
+      
+      // set ready state to 0
+      const updatedState = users.setReadyState(socket.profile.sessionId, 0);
+      
+      // remove user after 5 seconds if he doesn't reconnect.
+      disconnectedUsers.push({
+        sessionId: socket.profile.sessionId,
+        timeout: setTimeout(() => {
+          try {
+            io.to(socket.profile.roomCode).emit("user disconnected", {
+              id: socket.profile.id,
+              isAdmin: socket.profile.isAdmin
+            });
+            const removedUser = users.removeUser(socket.profile.sessionId);
+          } catch (error) {
+            console.log(error);
+            socket.emit("found error", "error while disconnecting user");
+          }
+        }, 5000)
+      });
+    }
+  });
 
   socket.on("game ended", () => {
     console.log("game ended", socket.profile);

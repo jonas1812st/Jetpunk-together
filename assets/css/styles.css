@@ -1,3 +1,7 @@
+.dark-mode .jt-container {
+  background-color: #003d4e
+}
+
 .jt-container {
   padding: 10px;
   height: 150px;
@@ -23,7 +27,7 @@
   font-size: 16px;
 }
 
-.jt-table-ro td {
+.jt-table-ro td { /* ro stands for room owner */
   padding: 6px;
   font-size: 16px;
   vertical-align: top;
@@ -35,4 +39,12 @@
 
 .jt-parting-div {
   padding: 5px;
+}
+
+.jt-ready {
+  color: #039c03;
+}
+
+.jt-btn-disabled {
+  cursor: not-allowed !important;
 }
