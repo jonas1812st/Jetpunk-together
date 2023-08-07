@@ -68,7 +68,7 @@ io.on("connection", (socket) => {
         socket.profile.roomCode = ownRoom.room;
         socket.profile.isAdmin = true;
 
-        socket.emit("logged in", {
+        socket.emit("connected to room", {
           id: user.id,
           username: user.username,
           isAdmin: true,
@@ -76,6 +76,7 @@ io.on("connection", (socket) => {
         }, {
           code: ownRoom.room,
           quiz: ownRoom.quiz,
+          state: ownRoom.state,
           participants: participants.map(el => ({
             id: el.id,
             username: el.username,
@@ -91,14 +92,15 @@ io.on("connection", (socket) => {
         socket.profile.roomCode = joinedRoom.room;
         socket.profile.isAdmin = false;
 
-        socket.emit("logged in", {
+        socket.emit("connected to room", {
           id: user.id,
           username: user.username,
           isAdmin: false,
           ready: user.ready
         }, {
           code: joinedRoom.room,
-          quiz: joinedRoom.quiz
+          quiz: joinedRoom.quiz,
+          state: joinedRoom.state
         });
       }
 
@@ -151,7 +153,8 @@ io.on("connection", (socket) => {
               ready: 0
             }, {
               code: room.room,
-              quiz: room.quiz
+              quiz: room.quiz,
+              state: room.state
             });
           }
         } else {
@@ -161,7 +164,6 @@ io.on("connection", (socket) => {
         console.log(error);
         socket.emit("found error", "error while storing user data");
       }
-      // TODO worked out, finish here
     }
   });
 
@@ -202,6 +204,7 @@ io.on("connection", (socket) => {
         }, {
           code: room,
           quiz: data.quiz,
+          state: "waiting",
           participants: participants.map(el => ({
             id: el.id,
             username: el.username,
@@ -217,14 +220,19 @@ io.on("connection", (socket) => {
 
   socket.on("ready", () => {
     try {
-      if (!socket.profile.ready) {
-        const changedState = users.setReadyState(socket.profile.sessionId, 1);
-        socket.profile.ready = 1;
-        io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
+      const room = rooms.getRoomById(socket.profile.roomId);
+      if (room.state === "waiting") {
+        if (!socket.profile.ready) {
+          users.setReadyState(socket.profile.sessionId, 1);
+          socket.profile.ready = 1;
+          io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
+        } else {
+          users.setReadyState(socket.profile.sessionId, 0);
+          socket.profile.ready = 0;
+          io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
+        }
       } else {
-        const changedState = users.setReadyState(socket.profile.sessionId, 0);
-        socket.profile.ready = 0;
-        io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
+        socket.emit("found error", "couldn't set state to ready");
       }
     } catch (error) {
       console.log(error);
@@ -235,7 +243,7 @@ io.on("connection", (socket) => {
   socket.on("start game", () => {
     if (check.usersReady(socket.profile.roomId)) {
       try {
-        const info = rooms.setRoomState("started");
+        rooms.setRoomState("started");
 
         io.to(socket.profile.roomCode).emit("game started");
 
@@ -249,12 +257,40 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("changing quiz", () => {
+    try {
+      if (socket.profile.isAdmin) {
+        rooms.setRoomState(socket.profile.roomId, "changing");
+      }
+    } catch (error) {
+      console.log(error);
+      socket.emit("found error", "error while changing state of game to 'changing'");
+    }
+  });
+
+  socket.on("change quiz", quiz => {
+    try {
+      rooms.setRoomQuiz(socket.profile.roomId, quiz);
+      rooms.setRoomState(socket.profile.roomId, "waiting");
+
+      users.unreadyUsers(socket.profile.roomId, socket.profile.id);
+
+      io.to(socket.profile.roomCode).emit("quiz changed", quiz);
+    } catch (error) {
+      console.log(error);
+      socket.emit("found error", "error while changing quiz of game");
+    }
+  }) 
+
   socket.on("disconnect", () => {
     if (socket.profile.roomCode) {
-      
+
       // set ready state to 0
-      const updatedState = users.setReadyState(socket.profile.sessionId, 0);
-      
+      if (!socket.profile.isAdmin && socket.profile.ready) {
+        const updatedState = users.setReadyState(socket.profile.sessionId, 0);
+        io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
+      }
+
       // remove user after 5 seconds if he doesn't reconnect.
       disconnectedUsers.push({
         sessionId: socket.profile.sessionId,
@@ -264,7 +300,13 @@ io.on("connection", (socket) => {
               id: socket.profile.id,
               isAdmin: socket.profile.isAdmin
             });
-            const removedUser = users.removeUser(socket.profile.sessionId);
+
+            if (socket.profile.isAdmin) {
+              rooms.removeRoom(socket.profile.roomId);
+              users.removeByRoom(socket.profile.roomId);
+            } else {
+              users.removeUser(socket.profile.sessionId);
+            }
           } catch (error) {
             console.log(error);
             socket.emit("found error", "error while disconnecting user");

@@ -7,7 +7,13 @@ function updateUserRoom(user_id, room) {
 }
 
 function newRoom(owner, room, quiz) {
-  const info = db.run("INSERT INTO rooms (room, owner, quiz) VALUES (?, ?, ?);", [room, owner, quiz]);
+  const info = db.run("INSERT INTO rooms (room, owner, quiz, state) VALUES (?, ?, ?, 'waiting');", [room, owner, quiz]);
+
+  return info;
+};
+
+function removeRoom(roomId) {
+  const info = db.run("DELETE FROM rooms WHERE id = ?", roomId);
 
   return info;
 };
@@ -42,6 +48,12 @@ function setRoomState(room_id, state) {
   return info;
 }
 
+function setRoomQuiz(room_id, quiz) {
+  const info = db.run("UPDATE rooms SET quiz = ? WHERE id = ?;", [quiz, room_id]);
+
+  return info;
+}
+
 module.exports = Object.assign(
   module.exports, {
     newRoom,
@@ -50,5 +62,7 @@ module.exports = Object.assign(
     getRoomById,
     isOwner,
     getParticipants,
-    setRoomState
+    setRoomState,
+    removeRoom,
+    setRoomQuiz
   });

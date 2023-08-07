@@ -30,11 +30,25 @@ function getUserReady(session_id) {
   return ready.ready ? true : false;
 }
 
+function removeByRoom(room_id) {
+  const info = db.run("DELETE FROM users WHERE room = ?;", room_id);
+
+  return info;
+}
+
+function unreadyUsers(roomId, ownerId) {
+  const info = db.run("UPDATE users SET ready = 0 WHERE room = ? AND id IS NOT ?;", [roomId, ownerId]);
+
+  return info;
+}
+
 module.exports = Object.assign(
   module.exports, {
     newUser,
     getUser,
     setReadyState,
     getUserReady,
-    removeUser
+    removeUser,
+    removeByRoom,
+    unreadyUsers
   });
