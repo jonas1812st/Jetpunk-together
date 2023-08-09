@@ -63,7 +63,6 @@ io.on("connection", (socket) => {
         const participants = rooms.getParticipants(ownRoom.id);
         socket.join(ownRoom.room);
         socket.profile.id = user.id;
-        socket.profile.ready = user.ready;
         socket.profile.roomId = ownRoom.id;
         socket.profile.roomCode = ownRoom.room;
         socket.profile.isAdmin = true;
@@ -87,7 +86,6 @@ io.on("connection", (socket) => {
         const joinedRoom = rooms.getRoomById(user.room);
         socket.join(joinedRoom.room);
         socket.profile.id = user.id;
-        socket.profile.ready = user.ready;
         socket.profile.roomId = user.room;
         socket.profile.roomCode = joinedRoom.room;
         socket.profile.isAdmin = false;
@@ -141,7 +139,6 @@ io.on("connection", (socket) => {
 
             socket.join(data.roomId);
             socket.profile.id = info.lastInsertRowid;
-            socket.profile.ready = 0;
             socket.profile.roomId = room.id;
             socket.profile.roomCode = data.roomId;
             socket.profile.isAdmin = false;
@@ -190,7 +187,6 @@ io.on("connection", (socket) => {
 
         socket.join(room);
         socket.profile.id = newUser.lastInsertRowid;
-        socket.profile.ready = 1;
         socket.profile.roomId = newRoom.lastInsertRowid;
         socket.profile.roomCode = room;
         socket.profile.isAdmin = true;
@@ -222,13 +218,11 @@ io.on("connection", (socket) => {
     try {
       const room = rooms.getRoomById(socket.profile.roomId);
       if (room.state === "waiting") {
-        if (!socket.profile.ready) {
+        if (!users.getUserReady(socket.profile.sessionId)) {
           users.setReadyState(socket.profile.sessionId, 1);
-          socket.profile.ready = 1;
           io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
         } else {
           users.setReadyState(socket.profile.sessionId, 0);
-          socket.profile.ready = 0;
           io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
         }
       } else {
@@ -243,7 +237,7 @@ io.on("connection", (socket) => {
   socket.on("start game", () => {
     if (check.usersReady(socket.profile.roomId)) {
       try {
-        rooms.setRoomState("started");
+        rooms.setRoomState(socket.profile.roomId, "started");
 
         io.to(socket.profile.roomCode).emit("game started");
 
@@ -286,8 +280,8 @@ io.on("connection", (socket) => {
     if (socket.profile.roomCode) {
 
       // set ready state to 0
-      if (!socket.profile.isAdmin && socket.profile.ready) {
-        const updatedState = users.setReadyState(socket.profile.sessionId, 0);
+      if (!socket.profile.isAdmin && users.getUserReady(socket.profile.sessionId)) {
+        users.setReadyState(socket.profile.sessionId, 0);
         io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
       }
 
@@ -376,3 +370,6 @@ const loginSchema = Joi.object({
     .required()
     .label("session id")
 });
+
+// FIXME wenn quiz erstellt wird oder das quiz geändert wird, muss überprüft werden, ob das wirklich gerade ein quiz ist, sonst kann man auch für andere Seiten sowas erstellen.
+// FIXME vllt alles, was in socket.profile gespeichert (bis auf sessionId) ist durch database-funktionen ersetzen. Das ist auf Dauer einfacher 

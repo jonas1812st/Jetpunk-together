@@ -3,5 +3,5 @@ const crypto = require("crypto");
 const rooms = require("../services/rooms");
 const users = require("../services/users");
 
-const changedState = users.userReadyState("7codtvfv4fnct95gdp3jm7d9mc", 1);
+const changedState = users.getUserReady("m4rb0qdher7mvdg5v97do9mtmo");
 console.log(changedState);
