@@ -3,7 +3,6 @@ const app = express();
 const path = require("path");
 const http = require("http");
 require("dotenv").config();
-const Joi = require('joi');
 const crypto = require('crypto');
 const fs = require("fs");
 
@@ -11,6 +10,9 @@ const fs = require("fs");
 const rooms = require("./services/rooms");
 const users = require("./services/users");
 const check = require("./services/check");
+
+// validation schemas
+const { loginSchema, roomSchema, userSchema } = require("./services/schemas");
 
 //socket.io
 const server = http.createServer(app);
@@ -323,12 +325,17 @@ io.on("connection", (socket) => {
       users.removeUser(socket.profile.sessionId);
     }
 
+    if (check.usersFinished(socket.profile.roomId)) {
+      rooms.setRoomState(socket.profile.roomId, "ended");
+
+      io.to(socket.profile.roomCode).emit("game has ended");
+    }
+
     socket.profile = {};
   });
 
   socket.on("disconnect", () => {
     if (socket.profile.roomCode) {
-      const room = rooms.getRoomById(socket.profile.roomId);
       // set ready state to 0
       if (!socket.profile.isAdmin && users.getUserReady(socket.profile.sessionId) && !rooms.gameStarted(socket.profile.roomId)) {
         users.setReadyState(socket.profile.sessionId, 0);
@@ -345,6 +352,12 @@ io.on("connection", (socket) => {
           users.removeByRoom(socket.profile.roomId);
         } else {
           users.removeUser(socket.profile.sessionId);
+        }
+
+        if (check.usersFinished(socket.profile.roomId)) {
+          rooms.setRoomState(socket.profile.roomId, "ended");
+    
+          io.to(socket.profile.roomCode).emit("game has ended");
         }
 
         return false;
@@ -384,7 +397,7 @@ io.on("connection", (socket) => {
   socket.on("game ended", (game) => {
     users.setUserScore(socket.profile.sessionId, game.score, game.possible);
 
-    if (check.usersFinished(socket.profile.roomId)) { // TODO diesen Check auch machen, wenn ein User disconnected und der roomState auf started ist
+    if (check.usersFinished(socket.profile.roomId)) {
       rooms.setRoomState(socket.profile.roomId, "ended");
 
       io.to(socket.profile.roomCode).emit("game has ended");
@@ -392,7 +405,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("reveal scores", () => {
-    if (check.usersFinished(socket.profile.roomId)) { // TODO diesen Check auch machen, wenn ein User disconnected und der roomState auf started ist
+    if (check.usersFinished(socket.profile.roomId)) {
       rooms.setRoomState(socket.profile.roomId, "ended");
       const allScores = users.getScores(socket.profile.roomId);
 
@@ -406,7 +419,6 @@ io.on("connection", (socket) => {
     try {
       rooms.setRoomState(socket.profile.roomId, "waiting");
 
-      // TODO reset scores to "NULL"
       users.unreadyUsers(socket.profile.roomid, socket.profile.id);
       rooms.resetScores(socket.profile.roomId);
 
@@ -421,55 +433,4 @@ io.on("connection", (socket) => {
     console.log(socket.profile);
   });
 
-});
-
-// validation schemas 
-// TODO maybe put these schemas in an extra file
-
-const userSchema = Joi.object({
-  name: Joi.string()
-    .trim()
-    .alphanum()
-    .min(3)
-    .max(30)
-    .required(),
-  roomId: Joi.string()
-    .trim()
-    .alphanum()
-    .min(3)
-    .max(30)
-    .required()
-    .label("room id"),
-  quiz: Joi.string()
-    .trim()
-    .required()
-    .pattern(/^[a-zA-Z0-9/-]+$/, {
-      name: 'quiz name'
-    })
-    .label("quiz")
-});
-
-// TODO combine the schemas in one single schema that works for all
-const roomSchema = Joi.object({
-  name: Joi.string()
-    .trim()
-    .alphanum()
-    .min(3)
-    .max(30)
-    .required(),
-  quiz: Joi.string()
-    .trim()
-    .required()
-    .pattern(/^[a-zA-Z0-9/-]+$/, {
-      name: 'quiz name'
-    })
-    .label("quiz")
-});
-
-const loginSchema = Joi.object({
-  sessionId: Joi.string()
-    .trim()
-    .alphanum()
-    .required()
-    .label("session id")
 });
