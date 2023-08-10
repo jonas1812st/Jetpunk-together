@@ -209,6 +209,10 @@ io.on("connection", (socket) => {
       // store all infos in database
       try {
         const data = validation.value;
+        if (!check.isQuiz(data.quiz)) {
+          socket.emit("found error", "please navigate to a quiz to create a room");
+          return false;
+        }
         const room = crypto.randomBytes(3).toString("hex").toUpperCase();
         const newUser = users.newUser(socket.profile.sessionId, data.name, "", 1);
         const newRoom = rooms.newRoom(newUser.lastInsertRowid, room, data.quiz);
@@ -290,12 +294,16 @@ io.on("connection", (socket) => {
 
   socket.on("change quiz", quiz => {
     try {
-      rooms.setRoomQuiz(socket.profile.roomId, quiz);
-      rooms.setRoomState(socket.profile.roomId, "waiting");
+      if (check.isQuiz(quiz)) {
+        rooms.setRoomQuiz(socket.profile.roomId, quiz);
+        rooms.setRoomState(socket.profile.roomId, "waiting");
 
-      users.unreadyUsers(socket.profile.roomId, socket.profile.id);
+        users.unreadyUsers(socket.profile.roomId, socket.profile.id);
 
-      io.to(socket.profile.roomCode).emit("quiz changed", quiz);
+        io.to(socket.profile.roomCode).emit("quiz changed", quiz);
+      } else {
+        socket.emit("found error", "please navigate to a quiz and press 'Change quiz'");
+      }
     } catch (error) {
       console.log(error);
       socket.emit("found error", "error while changing quiz of game");

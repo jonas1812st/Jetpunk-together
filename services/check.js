@@ -16,7 +16,7 @@ function usersReady(room_id) {
   }
 }
 
-function usersFinished (room_id) {
+function usersFinished(room_id) {
   const finishedUsers = db.query("SELECT score FROM users WHERE room = ?;", room_id);
 
   if (!finishedUsers.map(usr => usr.score).includes(null)) {
@@ -26,9 +26,21 @@ function usersFinished (room_id) {
   };
 }
 
+function isQuiz(quiz) {
+  var split = quiz.split("/");
+  split.splice(0, 1);
+
+  if ((split[0] === "quizzes" || split[0] === "user-quizzes") && split.length > 1) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 module.exports = Object.assign(
   module.exports, {
     sessIdExists,
     usersReady,
-    usersFinished
+    usersFinished,
+    isQuiz
   });
