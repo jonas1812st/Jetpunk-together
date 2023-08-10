@@ -5,6 +5,7 @@ const http = require("http");
 require("dotenv").config();
 const Joi = require('joi');
 const crypto = require('crypto');
+const fs = require("fs");
 
 // database
 const rooms = require("./services/rooms");
@@ -20,6 +21,28 @@ const io = new Server(server);
 
 // serve static files
 app.use("/assets", express.static(path.join(__dirname, "./assets")));
+
+app.get("/jetpunk_together", (req, res) => {
+  fs.readFile(path.join(__dirname, "assets", "tampermonkey", "index.user.js"), 'utf8', (err, data) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    res.setHeader('Content-Type', 'text/javascript');
+    res.send(data.replaceAll("YOUR_SERVER_URL", process.env.HOST_SERVER));
+  });
+});
+
+app.get("/jetpunk_together.user.js", (req, res) => {
+  fs.readFile(path.join(__dirname, "assets", "tampermonkey", "index.user.js"), 'utf8', (err, data) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    res.setHeader('Content-Type', 'text/javascript');
+    res.send(data.replaceAll("YOUR_SERVER_URL", process.env.HOST_SERVER));
+  });
+});
 
 server.listen(process.env.PORT, () => {
   console.log("Server running on port " + process.env.PORT);
