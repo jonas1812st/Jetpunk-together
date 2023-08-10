@@ -36,10 +36,22 @@ function removeByRoom(room_id) {
   return info;
 }
 
-function unreadyUsers(roomId, ownerId) {
-  const info = db.run("UPDATE users SET ready = 0 WHERE room = ? AND id IS NOT ?;", [roomId, ownerId]);
+function unreadyUsers(room_id, ownerId) {
+  const info = db.run("UPDATE users SET ready = 0 WHERE room = ? AND id IS NOT ?;", [room_id, ownerId]);
 
   return info;
+}
+
+function setUserScore(session_id, score, possible) {
+  const info = db.run("UPDATE users SET score = ? WHERE session_id = ?;", [score + "/" + possible, session_id]);
+
+  return info;
+}
+
+function getScores(room_id) {
+  const scores = db.query("SELECT id, username, score FROM users WHERE room = ?", room_id);
+
+  return scores;
 }
 
 module.exports = Object.assign(
@@ -50,5 +62,7 @@ module.exports = Object.assign(
     getUserReady,
     removeUser,
     removeByRoom,
-    unreadyUsers
+    unreadyUsers,
+    setUserScore,
+    getScores
   });

@@ -274,7 +274,7 @@ io.on("connection", (socket) => {
       console.log(error);
       socket.emit("found error", "error while changing quiz of game");
     }
-  }) 
+  })
 
   socket.on("disconnect", () => {
     if (socket.profile.roomCode) {
@@ -310,9 +310,26 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("game ended", () => {
-    console.log("game ended", socket.profile);
+  socket.on("game ended", (game) => {
+    users.setUserScore(socket.profile.sessionId, game.score, game.possible);
+
+    if (check.usersFinished(socket.profile.roomId)) { // TODO diesen Check auch machen, wenn ein User disconnected und der roomState auf started ist
+      rooms.setRoomState(socket.profile.roomId, "ended");
+
+      io.to(socket.profile.roomCode).emit("game has ended");
+    }
   });
+
+  socket.on("reveal scores", () => {
+    if (check.usersFinished(socket.profile.roomId)) { // TODO diesen Check auch machen, wenn ein User disconnected und der roomState auf started ist
+      rooms.setRoomState(socket.profile.roomId, "ended");
+      const allScores = users.getScores(socket.profile.roomId);
+
+      io.to(socket.profile.roomCode).emit("show scores", allScores);
+    } else {
+      socket.emit("found error", "not all players finished their quiz yet");
+    }
+  })
 
   socket.on("test", () => {
     console.log(socket.profile);
@@ -373,3 +390,4 @@ const loginSchema = Joi.object({
 
 // FIXME wenn quiz erstellt wird oder das quiz geändert wird, muss überprüft werden, ob das wirklich gerade ein quiz ist, sonst kann man auch für andere Seiten sowas erstellen.
 // FIXME vllt alles, was in socket.profile gespeichert (bis auf sessionId) ist durch database-funktionen ersetzen. Das ist auf Dauer einfacher 
+// FIXME einen "leaveRoomBtn" erstellen, der immer sichtbar ist, damit man den Raum verlassen kann. Für RoomOwner muss dann ein "destroy room btn" sein.

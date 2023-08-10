@@ -16,8 +16,19 @@ function usersReady(room_id) {
   }
 }
 
+function usersFinished (room_id) {
+  const finishedUsers = db.query("SELECT score FROM users WHERE room = ?;", room_id);
+
+  if (!finishedUsers.map(usr => usr.score).includes(null)) {
+    return true;
+  } else {
+    return false;
+  };
+}
+
 module.exports = Object.assign(
   module.exports, {
     sessIdExists,
-    usersReady
+    usersReady,
+    usersFinished
   });
