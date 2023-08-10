@@ -8,8 +8,8 @@
 // @icon         https://www.jetpunk.com/apple-touch-icon-152x152.png
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/jonas1812st/Jetpunk-together/master/index.js
-// @downloadURL  https://raw.githubusercontent.com/jonas1812st/Jetpunk-together/master/index.js
+// @updateURL    YOUR_SERVER_URL/jetpunk_together.user.js
+// @downloadURL  YOUR_SERVER_URL/jetpunk_together.user.js
 // @require      YOUR_SERVER_URL/socket.io/socket.io.js
 // @resource css YOUR_SERVER_URL/assets/css/styles.css
 // @require      https://code.jquery.com/jquery-3.7.0.min.js
@@ -44,8 +44,8 @@
 
     // Options for the observer (which mutations to observe)
     if (document.getElementsByClassName("user-score")[0]) {
-      $("#start-button").prop("disabled", true); // FIXME aus irgendeinem Grund funktioniert dies bei Linux, aber nicht bei dem Windows Laptop.
-      $("#start-button").addClass("jt-btn-disabled");
+      //$("#start-button").remove(); // FIXME aus irgendeinem Grund funktioniert dies bei Linux, aber nicht bei dem Windows Laptop. Es funktioniert nicht immer
+
       const observerConfig = {
         characterData: false,
         attributes: false,
@@ -53,32 +53,39 @@
         subtree: false
       };
 
-      const observerCallback = (mutationList, observer) => {
+      const observerGameEndedCallback = (mutationList, observer) => {
         for (const mutation of mutationList) {
           if (mutation.type === "childList") {
-            const score = $(".user-score").text();
-            const possible = $(".num-answers").text();
-            socket.emit("game ended", {
-              score: score,
-              possible: possible
-            });
+            if (profile.room.state === "started") {
+              const score = $(".user-score").text();
+              const possible = $(".num-answers").text();
+              socket.emit("game ended", {
+                score: score,
+                possible: possible
+              });
 
-            if (!profile.isAdmin) {
-              clearPlayGround();
-              displayMsg("Finished. Waiting for others...");
-            } else {
-              clearContainer({id: "startBtnContainer"});
-              displayMsgIn({id: "startBtnContainer", msg: "Finished. Waiting for others..."});
+              if (!profile.isAdmin) {
+                clearPlayGround();
+                displayMsg("Finished. Waiting for others...");
+              } else {
+                clearContainer({
+                  id: "startBtnContainer"
+                });
+                displayMsgIn({
+                  id: "startBtnContainer",
+                  msg: "Finished. Waiting for others..."
+                });
+              }
             }
           }
         }
       };
 
-      const targetNode = document.getElementsByClassName("user-score")[0];
+      const targetNodeGameEnded = document.getElementsByClassName("user-score")[0];
 
       // Create an observer instance linked to the callback function
-      const observer = new MutationObserver(observerCallback);
-      observer.observe(targetNode, observerConfig);
+      const observerGameEnded = new MutationObserver(observerGameEndedCallback);
+      observerGameEnded.observe(targetNodeGameEnded, observerConfig);
     }
   };
 
@@ -180,6 +187,24 @@
     }
   }
 
+  function createLeaveBtn() {
+    if (!profile.isAdmin) {
+      const leaveBtn = $("<button class='jt-ml btn red' id='leaveBtn'>Leave room</button>");
+      leaveBtn.on("click", () => {
+        handleLeaveBtn();
+      });
+
+      return leaveBtn;
+    } else {
+      const leaveBtn = $("<button class='jt-ml btn-sm red' id='leaveBtn'>Destroy room</button>");
+      leaveBtn.on("click", () => {
+        handleLeaveBtn();
+      });
+
+      return leaveBtn;
+    }
+  }
+
   function createScoreDisplay(score) {
     return $(`<span class='jt-font'>${score}</span>`);
   }
@@ -261,7 +286,7 @@
   function createRoomOwner() {
     const adminDiv = $("<div id='adminDiv' class='owner-panel'>");
 
-    const panelTable = $("<table class='jt-table-ro'>");
+    const panelTable = $("<table class='jt-table-panel'>");
     adminDiv.append(panelTable);
     const tableRow = $("<tr>");
     panelTable.append(tableRow);
@@ -297,6 +322,9 @@
     const changeQuizBtn = createChangeQuizBtn();
     topContainer.append(changeQuizBtn);
 
+    const leaveBtn = createLeaveBtn();
+    topContainer.append(leaveBtn);
+
     const bottomContainer = createPartingDiv(); // TODO eine Möglichkeit finden beide "partingDiv"s zu vereinen, damit es nicht so unschön aussieht.
     bottomContainer.attr("id", "startBtnContainer");
     tableCellRight.append(bottomContainer);
@@ -326,6 +354,9 @@
     const readyBtn = createReadyBtn();
     bottomContainer.append(readyBtn);
 
+    const leaveBtn = createLeaveBtn();
+    bottomContainer.append(leaveBtn);
+
     return userDiv;
   }
 
@@ -336,7 +367,7 @@
   }
 
   function createReadyBtn() {
-    const readyBtn = $("<button class='btn red' id='readyBtn'>Not ready</button>");
+    const readyBtn = $("<button class='btn orange' id='readyBtn'>Not ready</button>");
     if (!profile.ready) {
       changeReadyDisplay();
     }
@@ -387,9 +418,9 @@
     $("#readyInfo").text(profile.ready ? "Waiting for others..." : "Press ready to start:");
     $("#readyBtn").text(profile.ready ? "Not ready" : "Ready");
     if (profile.ready) {
-      $("#readyBtn").addClass("red").removeClass("green");
+      $("#readyBtn").addClass("orange").removeClass("green");
     } else {
-      $("#readyBtn").addClass("green").removeClass("red");
+      $("#readyBtn").addClass("green").removeClass("orange");
     }
   }
 
@@ -429,6 +460,7 @@
     } else if (user.isAdmin) {
       $("#readyInfo").text("Host disconnected. Redirecting to login page...");
       $("#readyBtn").remove();
+      $("#leaveBtn").remove();
 
       socket.emit("reset profile");
 
@@ -521,6 +553,12 @@
               clearPlayGround();
               displayMsg("Good luck!");
 
+              setTimeout(() => {
+                clearPlayGround();
+                const leaveBtn = createLeaveBtn();
+                $("#playGround").append(leaveBtn);
+              }, 1000);
+
               $("#start-button").prop("disabled", false);
               $("#start-button").removeClass("jt-btn-disabled");
               $("#start-button").click();
@@ -605,6 +643,9 @@
     } else {
       clearPlayGround();
       displayMsg("Waiting for host to reveal scores...");
+
+      const leaveBtn = createLeaveBtn();
+      $("#playGround").append(leaveBtn);
     }
   }
 
@@ -647,7 +688,20 @@
         html: createScoreDisplay(el.score),
         class: "jt-ready-display"
       }])));
-      $("#playGround").append(dataTable);
+
+      const panelTable = $("<table class='jt-table-panel'>");
+      $("#playGround").append(panelTable);
+      const tableRow = $("<tr>");
+      panelTable.append(tableRow);
+      const tableCellLeft = $("<td>");
+      tableRow.append(tableCellLeft);
+      const tableCellRight = $("<td>");
+      tableRow.append(tableCellRight);
+
+      tableCellLeft.append(dataTable);
+      
+      const leaveBtn = createLeaveBtn();
+      tableCellRight.append(leaveBtn);
     }
   }
 
@@ -683,6 +737,11 @@
     } else {
       createRoom(nameInput.val());
     }
+  }
+
+  function handleLeaveBtn() {
+    socket.emit("leave game");
+    location.reload();
   }
 
   function handleRevealBtn() {
@@ -815,9 +874,6 @@
     if (parts.length === 2) return parts.pop().split(';').shift();
   }
 })();
-
-// TODO aus dem ganzen hier besser eine extension machen. Sonst ist es einfacher den Code kritisch zu ändern.
-// FIXME das oben
 
 // FIXME einige quizzes nutzen "keypress event" um Dinge einzugeben. Wenn das der Fall ist, dann lässt sich nichts mehr in den INputs eingeben
 // FIXME Wenn "Go to this quiz" angezeigt wird für den Admin, dann sollte dieser auch einfach dort das Quiz ändern können.

@@ -300,7 +300,23 @@ io.on("connection", (socket) => {
       console.log(error);
       socket.emit("found error", "error while changing quiz of game");
     }
-  })
+  });
+
+  socket.on("leave game", () => {
+    io.to(socket.profile.roomCode).emit("user disconnected", {
+      id: socket.profile.id,
+      isAdmin: socket.profile.isAdmin
+    });
+
+    if (socket.profile.isAdmin) {
+      rooms.removeRoom(socket.profile.roomId);
+      users.removeByRoom(socket.profile.roomId);
+    } else {
+      users.removeUser(socket.profile.sessionId);
+    }
+
+    socket.profile = {};
+  });
 
   socket.on("disconnect", () => {
     if (socket.profile.roomCode) {
