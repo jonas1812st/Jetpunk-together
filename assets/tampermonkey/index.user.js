@@ -868,5 +868,3 @@
     if (parts.length === 2) return parts.pop().split(';').shift();
   }
 })();
-
-// FIXME einige quizzes nutzen "keypress event" um Dinge einzugeben. Wenn das der Fall ist, dann lässt sich nichts mehr in den Inputs eingeben
