@@ -473,7 +473,3 @@ const loginSchema = Joi.object({
     .required()
     .label("session id")
 });
-
-// FIXME wenn quiz erstellt wird oder das quiz geändert wird, muss überprüft werden, ob das wirklich gerade ein quiz ist, sonst kann man auch für andere Seiten sowas erstellen.
-// FIXME vllt alles, was in socket.profile gespeichert (bis auf sessionId) ist durch database-funktionen ersetzen. Das ist auf Dauer einfacher 
-// FIXME einen "leaveRoomBtn" erstellen, der immer sichtbar ist, damit man den Raum verlassen kann. Für RoomOwner muss dann ein "destroy room btn" sein.

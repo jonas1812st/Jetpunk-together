@@ -1,4 +1,0 @@
-1. Benutzername und session_id werden in Datenbank gespeichert (Benutzername ist zufällig anfangs)
-2. Benutzername kann geupdated werden (mit session_id)
-3. 
-4. 

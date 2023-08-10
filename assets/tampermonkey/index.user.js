@@ -36,15 +36,9 @@
     displayContainer();
     displayMsg("Authenticating...");
 
-    // TODO diese tests löschen
-    setTimeout(() => {
-      socket.emit("test");
-      console.log(profile);
-    }, 4000);
-
     // Options for the observer (which mutations to observe)
     if (document.getElementsByClassName("user-score")[0]) {
-      //$("#start-button").remove(); // FIXME aus irgendeinem Grund funktioniert dies bei Linux, aber nicht bei dem Windows Laptop. Es funktioniert nicht immer
+      $("#start-button").css("display", "none");
 
       const observerConfig = {
         characterData: false,
@@ -325,7 +319,7 @@
     const leaveBtn = createLeaveBtn();
     topContainer.append(leaveBtn);
 
-    const bottomContainer = createPartingDiv(); // TODO eine Möglichkeit finden beide "partingDiv"s zu vereinen, damit es nicht so unschön aussieht.
+    const bottomContainer = createPartingDiv();
     bottomContainer.attr("id", "startBtnContainer");
     tableCellRight.append(bottomContainer);
 
@@ -517,6 +511,12 @@
       if (profile.room.quiz !== location.pathname) {
         clearPlayGround();
         displayMsg(`Go to <a href='${profile.room.quiz}'>this quiz</a>`);
+        
+        if (profile.isAdmin) {
+          profile.room.state = "changing";
+          const changeBtn = createChangeQuizBtn();
+          $("#playGround").append(changeBtn);
+        }
       } else {
         if (profile.isAdmin) {
           clearPlayGround();
@@ -559,8 +559,6 @@
                 $("#playGround").append(leaveBtn);
               }, 1000);
 
-              $("#start-button").prop("disabled", false);
-              $("#start-button").removeClass("jt-btn-disabled");
               $("#start-button").click();
             }, 1500);
           }, 1500);
@@ -611,8 +609,6 @@
                 msg: "Good Luck!"
               });
 
-              $("#start-button").prop("disabled", false);
-              $("#start-button").removeClass("jt-btn-disabled");
               $("#start-button").click();
 
               $("#changeQuizBtn").prop("disabled", true);
@@ -720,7 +716,6 @@
   }
 
   function handleStartBtn() {
-    // TODO finish this function to send "start game" to server after checking if all players are ready
     if (!profile.room.participants.map(el => el.ready).includes(0)) {
       socket.emit("start game");
     } else {
@@ -785,7 +780,6 @@
   // error functions
 
   function handleError(msg) {
-    // TODO this function should show a message (in red) under the input with the error message
     alert(msg);
   }
 
@@ -875,5 +869,4 @@
   }
 })();
 
-// FIXME einige quizzes nutzen "keypress event" um Dinge einzugeben. Wenn das der Fall ist, dann lässt sich nichts mehr in den INputs eingeben
-// FIXME Wenn "Go to this quiz" angezeigt wird für den Admin, dann sollte dieser auch einfach dort das Quiz ändern können.
+// FIXME einige quizzes nutzen "keypress event" um Dinge einzugeben. Wenn das der Fall ist, dann lässt sich nichts mehr in den Inputs eingeben
