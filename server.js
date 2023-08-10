@@ -59,7 +59,7 @@ io.on("connection", (socket) => {
     const user = users.getUser(sessionId);
     if (user) {
       const ownRoom = rooms.isOwner(user.id);
-      if (ownRoom) {
+      if (ownRoom && !rooms.gameStarted(ownRoom.id)) {
         const participants = rooms.getParticipants(ownRoom.id);
         socket.join(ownRoom.room);
         socket.profile.id = user.id;
@@ -82,24 +82,30 @@ io.on("connection", (socket) => {
             ready: el.ready
           }))
         });
+      } else if (ownRoom && rooms.gameStarted(ownRoom.id)) {
+        socket.emit("found error", "the game you want to join has already started");
       } else {
         const joinedRoom = rooms.getRoomById(user.room);
-        socket.join(joinedRoom.room);
-        socket.profile.id = user.id;
-        socket.profile.roomId = user.room;
-        socket.profile.roomCode = joinedRoom.room;
-        socket.profile.isAdmin = false;
+        if (!rooms.gameStarted(joinedRoom.id)) {
+          socket.join(joinedRoom.room);
+          socket.profile.id = user.id;
+          socket.profile.roomId = user.room;
+          socket.profile.roomCode = joinedRoom.room;
+          socket.profile.isAdmin = false;
 
-        socket.emit("connected to room", {
-          id: user.id,
-          username: user.username,
-          isAdmin: false,
-          ready: user.ready
-        }, {
-          code: joinedRoom.room,
-          quiz: joinedRoom.quiz,
-          state: joinedRoom.state
-        });
+          socket.emit("connected to room", {
+            id: user.id,
+            username: user.username,
+            isAdmin: false,
+            ready: user.ready
+          }, {
+            code: joinedRoom.room,
+            quiz: joinedRoom.quiz,
+            state: joinedRoom.state
+          });
+        } else {
+          socket.emit("found error", "the game you want to join has already started");
+        }
       }
 
     } else {
@@ -127,24 +133,23 @@ io.on("connection", (socket) => {
           const room = rooms.getRoom(data.roomId);
           if (!room) {
             socket.emit("found error", "room not found");
-          } else {
-            const info = users.newUser(socket.profile.sessionId, data.name, room.id, 0);
-            console.log(info);
+          } else if (!rooms.gameStarted(room.id)) {
+            const newUser = users.newUser(socket.profile.sessionId, data.name, room.id, 0);
 
             io.to(data.roomId).emit("new user", ({
-              id: info.lastInsertRowid,
+              id: newUser.lastInsertRowid,
               username: data.name,
               ready: 0
             }));
 
             socket.join(data.roomId);
-            socket.profile.id = info.lastInsertRowid;
+            socket.profile.id = newUser.lastInsertRowid;
             socket.profile.roomId = room.id;
             socket.profile.roomCode = data.roomId;
             socket.profile.isAdmin = false;
 
             socket.emit("connected to room", {
-              id: info.lastInsertRowid,
+              id: newUser.lastInsertRowid,
               username: data.name,
               isAdmin: false,
               ready: 0
@@ -153,6 +158,8 @@ io.on("connection", (socket) => {
               quiz: room.quiz,
               state: room.state
             });
+          } else {
+            socket.emit("found error", "the game you want to join has already started");
           }
         } else {
           socket.emit("found error", "already logged in");
@@ -217,16 +224,12 @@ io.on("connection", (socket) => {
   socket.on("ready", () => {
     try {
       const room = rooms.getRoomById(socket.profile.roomId);
-      if (room.state === "waiting") {
-        if (!users.getUserReady(socket.profile.sessionId)) {
-          users.setReadyState(socket.profile.sessionId, 1);
-          io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
-        } else {
-          users.setReadyState(socket.profile.sessionId, 0);
-          io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
-        }
+      if (!users.getUserReady(socket.profile.sessionId)) {
+        users.setReadyState(socket.profile.sessionId, 1);
+        io.to(socket.profile.roomCode).emit("user ready", socket.profile.id);
       } else {
-        socket.emit("found error", "couldn't set state to ready");
+        users.setReadyState(socket.profile.sessionId, 0);
+        io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
       }
     } catch (error) {
       console.log(error);
@@ -278,11 +281,26 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     if (socket.profile.roomCode) {
-
+      const room = rooms.getRoomById(socket.profile.roomId);
       // set ready state to 0
-      if (!socket.profile.isAdmin && users.getUserReady(socket.profile.sessionId)) {
+      if (!socket.profile.isAdmin && users.getUserReady(socket.profile.sessionId) && !rooms.gameStarted(socket.profile.roomId)) {
         users.setReadyState(socket.profile.sessionId, 0);
         io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
+      } else if (users.getUserReady(socket.profile.sessionId) && rooms.gameStarted(socket.profile.roomId)) {
+        // remove user or host and the connected users instantly if the game has started;
+        io.to(socket.profile.roomCode).emit("user disconnected", {
+          id: socket.profile.id,
+          isAdmin: socket.profile.isAdmin
+        });
+
+        if (socket.profile.isAdmin) {
+          rooms.removeRoom(socket.profile.roomId);
+          users.removeByRoom(socket.profile.roomId);
+        } else {
+          users.removeUser(socket.profile.sessionId);
+        }
+
+        return false;
       }
 
       // remove user after 5 seconds if he doesn't reconnect.
@@ -310,6 +328,12 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.emit("reset profile", () => {
+    socket.profile = {
+      sessionId: socket.profile.sessionId
+    };
+  });
+
   socket.on("game ended", (game) => {
     users.setUserScore(socket.profile.sessionId, game.score, game.possible);
 
@@ -329,7 +353,22 @@ io.on("connection", (socket) => {
     } else {
       socket.emit("found error", "not all players finished their quiz yet");
     }
-  })
+  });
+
+  socket.on("restart game", () => {
+    try {
+      rooms.setRoomState(socket.profile.roomId, "waiting");
+
+      // TODO reset scores to "NULL"
+      users.unreadyUsers(socket.profile.roomid, socket.profile.id);
+      rooms.resetScores(socket.profile.roomId);
+
+      io.to(socket.profile.roomCode).emit("game restarted");
+    } catch (error) {
+      console.log(error);
+      socket.emit("found error", "error while restarting game");
+    }
+  });
 
   socket.on("test", () => {
     console.log(socket.profile);

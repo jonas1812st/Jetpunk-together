@@ -3,5 +3,5 @@ const crypto = require("crypto");
 const rooms = require("../services/rooms");
 const users = require("../services/users");
 
-const usersFinished = check.usersFinished("1");
-console.log(usersFinished);
+const gamestarted = rooms.gameStarted("1");
+console.log(gamestarted);

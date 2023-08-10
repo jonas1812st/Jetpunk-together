@@ -54,6 +54,22 @@ function setRoomQuiz(room_id, quiz) {
   return info;
 }
 
+function resetScores(room_id) {
+  const info = db.run("UPDATE users SET score = NULL WHERE room = ?;", room_id);
+
+  return info;
+}
+
+function gameStarted (room_id) {
+  const roomInfo = db.getOne("SELECT state FROM rooms WHERE id = ?", room_id);
+
+  if (roomInfo.state === "started" || roomInfo.state === "ended") {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 module.exports = Object.assign(
   module.exports, {
     newRoom,
@@ -64,5 +80,7 @@ module.exports = Object.assign(
     getParticipants,
     setRoomState,
     removeRoom,
-    setRoomQuiz
+    setRoomQuiz,
+    resetScores,
+    gameStarted
   });
