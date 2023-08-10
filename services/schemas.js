@@ -50,5 +50,5 @@ const loginSchema = Joi.object({
 module.exports = {
   userSchema: userSchema,
   roomSchema: roomSchema,
-  loginSchema: roomSchema
+  loginSchema: loginSchema
 }
