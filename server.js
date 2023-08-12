@@ -54,7 +54,6 @@ var disconnectedUsers = [];
 
 io.on("connection", (socket) => {
 
-  console.log("socket connected", socket.id);
   socket.profile = {};
 
   socket.on("login", (sessionId) => {
@@ -428,9 +427,4 @@ io.on("connection", (socket) => {
       socket.emit("found error", "error while restarting game");
     }
   });
-
-  socket.on("test", () => {
-    console.log(socket.profile);
-  });
-
 });

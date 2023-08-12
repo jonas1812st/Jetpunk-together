@@ -499,8 +499,6 @@
     clearPlayGround();
     displayMsg("Connecting to room...");
     setTimeout(() => {
-      console.log(profile);
-
       if (profile.room.state === "changing" && profile.isAdmin) {
         clearPlayGround();
         displayChanging();
@@ -646,7 +644,6 @@
   }
 
   function revealScores(scores) {
-    console.log(scores);
     const ownScore = scores.find(score => score.id === profile.id).score;
     profile.score = ownScore;
 
@@ -749,19 +746,16 @@
 
   function handleChangeBtn() {
     if (profile.room.state === "waiting") {
-      console.log("changing quiz for whole room...");
       socket.emit("changing quiz");
       clearPlayGround();
       displayChanging();
       profile.room.state = "changing";
     } else if (profile.room.state === "changing") {
-      console.log("change quiz for whole room");
       socket.emit("change quiz", location.pathname);
     }
   };
 
   function handleCopyBtn() {
-    console.log("copied room code to clipboard", profile.room.code);
     navigator.clipboard.writeText(profile.room.code);
   };
 
@@ -811,7 +805,6 @@
   });
 
   socket.on("new user", user => {
-    console.log("new user", user);
     if (profile.isAdmin) {
       profile.room.participants.push(user);
       addPlayerList(user);
@@ -820,12 +813,10 @@
   });
 
   socket.on("user ready", (userId) => {
-    console.log("user ready", userId);
     setReadyState(userId, 1);
   });
 
   socket.on("user unready", (userId) => {
-    console.log("user unready", userId);
     setReadyState(userId, 0);
   });
 
