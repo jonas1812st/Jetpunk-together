@@ -17,7 +17,7 @@
 // ==/UserScript==
 
 (function () {
-  'use strict';
+  "use strict";
 
   // load remote css
   const myCss = GM_getResourceText("css");
@@ -25,64 +25,70 @@
 
   // initialization
   const socket = io.connect("YOUR_SERVER_URL", {
-    transports: ['websocket']
+    transports: ["websocket"],
   });
 
   // set profile variable
   var profile = {};
 
-  window.onload = () => {
-    socket.emit("login", getCookie("PHPSESSID"));
-    displayContainer();
-    displayMsg("Authenticating...");
+  document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+      socket.emit("login", getCookie("PHPSESSID"));
+      displayContainer();
+      displayMsg("Authenticating...");
 
-    // Options for the observer (which mutations to observe)
-    if (document.getElementsByClassName("user-score")[0]) {
-      $("#start-button").css("display", "none");
+      // Options for the observer (which mutations to observe)
+      if (document.getElementsByClassName("user-score")[0]) {
+        $("#start-button").css("display", "none");
 
-      const observerConfig = {
-        characterData: false,
-        attributes: false,
-        childList: true,
-        subtree: false
-      };
+        const observerConfig = {
+          characterData: false,
+          attributes: false,
+          childList: true,
+          subtree: false,
+        };
 
-      const observerGameEndedCallback = (mutationList, observer) => {
-        for (const mutation of mutationList) {
-          if (mutation.type === "childList") {
-            if (profile.room.state === "started") {
-              const score = $(".user-score").text();
-              const possible = $(".num-answers").text();
-              socket.emit("game ended", {
-                score: score,
-                possible: possible
-              });
-
-              if (!profile.isAdmin) {
-                clearPlayGround();
-                displayMsg("Finished. Waiting for others...");
-              } else {
-                clearContainer({
-                  id: "startBtnContainer"
+        const observerGameEndedCallback = (mutationList, observer) => {
+          for (const mutation of mutationList) {
+            if (mutation.type === "childList") {
+              if (profile.room.state === "started") {
+                const score = $(".user-score").text();
+                const possible = $(".num-answers").text();
+                socket.emit("game ended", {
+                  score: score,
+                  possible: possible,
                 });
-                displayMsgIn({
-                  id: "startBtnContainer",
-                  msg: "Finished. Waiting for others..."
-                });
+
+                if (!profile.isAdmin) {
+                  clearPlayGround();
+                  displayMsg("Finished. Waiting for others...");
+                } else {
+                  clearContainer({
+                    id: "startBtnContainer",
+                  });
+                  displayMsgIn({
+                    id: "startBtnContainer",
+                    msg: "Finished. Waiting for others...",
+                  });
+                }
               }
             }
           }
-        }
-      };
+        };
 
-      const targetNodeGameEnded = document.getElementsByClassName("user-score")[0];
+        const targetNodeGameEnded =
+          document.getElementsByClassName("user-score")[0];
 
-      // Create an observer instance linked to the callback function
-      const observerGameEnded = new MutationObserver(observerGameEndedCallback);
-      observerGameEnded.observe(targetNodeGameEnded, observerConfig);
-    }
-  };
-
+        // Create an observer instance linked to the callback function
+        const observerGameEnded = new MutationObserver(
+          observerGameEndedCallback,
+        );
+        observerGameEnded.observe(targetNodeGameEnded, observerConfig);
+      }
+    },
+    { once: true },
+  );
 
   // display functions
 
@@ -148,14 +154,18 @@
   function createLoginForm() {
     const loginContainer = $("<div id='loginDiv'>");
 
-    const nameInput = $("<input placeholder='Enter your name' id='nameInput' type='text'>");
+    const nameInput = $(
+      "<input placeholder='Enter your name' id='nameInput' type='text'>",
+    );
     if (profile.username) {
       nameInput.val(profile.username);
       profile = {};
-    };
+    }
     loginContainer.append(nameInput);
 
-    const roomIdInput = $("<input id='roomIdInput' type='password' placeholder='Enter room id (join)' class='jt-ml'>");
+    const roomIdInput = $(
+      "<input id='roomIdInput' type='password' placeholder='Enter room id (join)' class='jt-ml'>",
+    );
     loginContainer.append(roomIdInput);
 
     const roomIdBtn = $("<button class='jt-ml'>Join</button>");
@@ -183,14 +193,18 @@
 
   function createLeaveBtn() {
     if (!profile.isAdmin) {
-      const leaveBtn = $("<button class='jt-ml btn red' id='leaveBtn'>Leave room</button>");
+      const leaveBtn = $(
+        "<button class='jt-ml btn red' id='leaveBtn'>Leave room</button>",
+      );
       leaveBtn.on("click", () => {
         handleLeaveBtn();
       });
 
       return leaveBtn;
     } else {
-      const leaveBtn = $("<button class='jt-ml btn-sm red' id='leaveBtn'>Destroy room</button>");
+      const leaveBtn = $(
+        "<button class='jt-ml btn-sm red' id='leaveBtn'>Destroy room</button>",
+      );
       leaveBtn.on("click", () => {
         handleLeaveBtn();
       });
@@ -211,11 +225,16 @@
       for (var cellIndex = 0; cellIndex < data[rowIndex].length; cellIndex++) {
         const tableCell = $(rowIndex === 0 ? "<th>" : "<td>");
         if (typeof data[rowIndex][cellIndex] === "object") {
-          if (data[rowIndex][cellIndex].content) tableCell.text(data[rowIndex][cellIndex].content);
-          if (data[rowIndex][cellIndex].rowId) tableRow.attr("id", data[rowIndex][cellIndex].rowId);
-          if (data[rowIndex][cellIndex].id) tableCell.attr("id", data[rowIndex][cellIndex].id);
-          if (data[rowIndex][cellIndex].class) tableCell.addClass(data[rowIndex][cellIndex].class);
-          if (data[rowIndex][cellIndex].html) tableCell.append(data[rowIndex][cellIndex].html);
+          if (data[rowIndex][cellIndex].content)
+            tableCell.text(data[rowIndex][cellIndex].content);
+          if (data[rowIndex][cellIndex].rowId)
+            tableRow.attr("id", data[rowIndex][cellIndex].rowId);
+          if (data[rowIndex][cellIndex].id)
+            tableCell.attr("id", data[rowIndex][cellIndex].id);
+          if (data[rowIndex][cellIndex].class)
+            tableCell.addClass(data[rowIndex][cellIndex].class);
+          if (data[rowIndex][cellIndex].html)
+            tableCell.append(data[rowIndex][cellIndex].html);
         } else {
           tableCell.text(data[rowIndex][cellIndex]);
         }
@@ -260,7 +279,9 @@
   }
 
   function createChangeQuizBtn(classes) {
-    const changeBtn = $(`<button class='${classes === undefined ? "jt-ml btn-sm green" : classes}' id='changeQuizBtn'>Change quiz</button>`);
+    const changeBtn = $(
+      `<button class='${classes === undefined ? "jt-ml btn-sm green" : classes}' id='changeQuizBtn'>Change quiz</button>`,
+    );
     changeBtn.on("click", () => {
       handleChangeBtn();
     });
@@ -289,22 +310,34 @@
     const tableCellRight = $("<td>");
     tableRow.append(tableCellRight);
 
-    const dataTable = createDataTable([
-      ["#", "Name", {
-        content: "Ready",
-        id: "stateCell"
-      }]
-    ].concat(profile.room.participants.map((el, index) => [{
-      content: index + 1,
-      class: "jt-list-index"
-    }, {
-      content: el.username,
-      rowId: el.id
-    }, {
-      html: createReadyDisplay(el.ready),
-      class: "jt-ready-display"
-    }])));
-    dataTable.attr("id", "playerList")
+    const dataTable = createDataTable(
+      [
+        [
+          "#",
+          "Name",
+          {
+            content: "Ready",
+            id: "stateCell",
+          },
+        ],
+      ].concat(
+        profile.room.participants.map((el, index) => [
+          {
+            content: index + 1,
+            class: "jt-list-index",
+          },
+          {
+            content: el.username,
+            rowId: el.id,
+          },
+          {
+            html: createReadyDisplay(el.ready),
+            class: "jt-ready-display",
+          },
+        ]),
+      ),
+    );
+    dataTable.attr("id", "playerList");
     tableCellLeft.append(dataTable);
 
     const topContainer = createPartingDiv();
@@ -361,7 +394,9 @@
   }
 
   function createReadyBtn() {
-    const readyBtn = $("<button class='btn orange' id='readyBtn'>Not ready</button>");
+    const readyBtn = $(
+      "<button class='btn orange' id='readyBtn'>Not ready</button>",
+    );
     if (!profile.ready) {
       changeReadyDisplay();
     }
@@ -391,7 +426,9 @@
   }
 
   function createRevealBtn() {
-    const revealBtn = $("<button class='btn green' id='revealBtn'>Reveal scores</button>");
+    const revealBtn = $(
+      "<button class='btn green' id='revealBtn'>Reveal scores</button>",
+    );
     revealBtn.on("click", () => {
       handleRevealBtn();
     });
@@ -400,7 +437,9 @@
   }
 
   function createRestartBtn() {
-    const restartBtn = $("<button class='btn blue' id='restartBtn'>Restart</button>");;
+    const restartBtn = $(
+      "<button class='btn blue' id='restartBtn'>Restart</button>",
+    );
     restartBtn.on("click", () => {
       handleRestartBtn();
     });
@@ -409,7 +448,9 @@
   }
 
   function changeReadyDisplay() {
-    $("#readyInfo").text(profile.ready ? "Waiting for others..." : "Press ready to start:");
+    $("#readyInfo").text(
+      profile.ready ? "Waiting for others..." : "Press ready to start:",
+    );
     $("#readyBtn").text(profile.ready ? "Not ready" : "Ready");
     if (profile.ready) {
       $("#readyBtn").addClass("orange").removeClass("green");
@@ -420,17 +461,23 @@
 
   function addPlayerList(player) {
     if (profile.isAdmin) {
-      const lastTableIndex = Number($("#playerList tr:last-child td:first-child").text());
-      const tableRow = createDataTableRow([{
-        content: lastTableIndex + 1,
-        class: "jt-list-index"
-      }, {
-        content: player.username,
-        rowId: player.id
-      }, {
-        html: createReadyDisplay(player.ready),
-        class: "jt-ready-display"
-      }]);
+      const lastTableIndex = Number(
+        $("#playerList tr:last-child td:first-child").text(),
+      );
+      const tableRow = createDataTableRow([
+        {
+          content: lastTableIndex + 1,
+          class: "jt-list-index",
+        },
+        {
+          content: player.username,
+          rowId: player.id,
+        },
+        {
+          html: createReadyDisplay(player.ready),
+          class: "jt-ready-display",
+        },
+      ]);
       $("#playerList").append(tableRow);
       updateListIndex();
     }
@@ -440,7 +487,7 @@
     if (profile.isAdmin) {
       const tableRow = $("#playerList tr#" + userId);
       tableRow.remove();
-      updateListIndex()
+      updateListIndex();
     }
   }
 
@@ -448,7 +495,9 @@
     if (profile.isAdmin) {
       removePlayerList(user.id);
       // remove from profile variable
-      const playerIndex = profile.room.participants.map(el => el.id).indexOf(user.id);
+      const playerIndex = profile.room.participants
+        .map((el) => el.id)
+        .indexOf(user.id);
       profile.room.participants.splice(playerIndex, 1);
       updateStartBtn();
     } else if (user.isAdmin) {
@@ -472,7 +521,9 @@
       const readyDisplay = createReadyDisplay(ready);
       tableCell.html(readyDisplay);
 
-      const player = profile.room.participants.find(player => player.id === userId);
+      const player = profile.room.participants.find(
+        (player) => player.id === userId,
+      );
       if (player) player.ready = ready;
 
       updateStartBtn();
@@ -480,7 +531,10 @@
   }
 
   function updateStartBtn() {
-    if (profile.room.participants.map(el => el.ready).includes(0) || profile.room.participants.length === 1) {
+    if (
+      profile.room.participants.map((el) => el.ready).includes(0) ||
+      profile.room.participants.length === 1
+    ) {
       $("#startBtn").prop("disabled", true).addClass("jt-btn-disabled");
     } else {
       $("#startBtn").prop("disabled", false).removeClass("jt-btn-disabled");
@@ -509,7 +563,7 @@
       if (profile.room.quiz !== location.pathname) {
         clearPlayGround();
         displayMsg(`Go to <a href='${profile.room.quiz}'>this quiz</a>`);
-        
+
         if (profile.isAdmin) {
           profile.room.state = "changing";
           const changeBtn = createChangeQuizBtn();
@@ -523,7 +577,7 @@
         } else {
           clearPlayGround();
           displayRoomUser();
-          changeReadyDisplay()
+          changeReadyDisplay();
         }
       }
     }, 1000);
@@ -564,47 +618,47 @@
       }, 1500);
     } else {
       clearContainer({
-        id: "startBtnContainer"
+        id: "startBtnContainer",
       });
       displayMsgIn({
         id: "startBtnContainer",
-        msg: "Starting game..."
+        msg: "Starting game...",
       });
 
       setTimeout(() => {
         clearContainer({
-          id: "startBtnContainer"
+          id: "startBtnContainer",
         });
         displayMsgIn({
           id: "startBtnContainer",
-          msg: "3..."
+          msg: "3...",
         });
 
         setTimeout(() => {
           clearContainer({
-            id: "startBtnContainer"
+            id: "startBtnContainer",
           });
           displayMsgIn({
             id: "startBtnContainer",
-            msg: "2..."
+            msg: "2...",
           });
 
           setTimeout(() => {
             clearContainer({
-              id: "startBtnContainer"
+              id: "startBtnContainer",
             });
             displayMsgIn({
               id: "startBtnContainer",
-              msg: "1..."
+              msg: "1...",
             });
 
             setTimeout(() => {
               clearContainer({
-                id: "startBtnContainer"
+                id: "startBtnContainer",
               });
               displayMsgIn({
                 id: "startBtnContainer",
-                msg: "Good Luck!"
+                msg: "Good Luck!",
               });
 
               $("#start-button").click();
@@ -613,11 +667,11 @@
               $("#changeQuizBtn").addClass("jt-btn-disabled");
 
               clearContainer({
-                class: "jt-ready-display"
+                class: "jt-ready-display",
               });
               displayMsgIn({
                 class: "jt-ready-display",
-                msg: "<span class='jt-font'>...</span>"
+                msg: "<span class='jt-font'>...</span>",
               });
             }, 1500);
           }, 1500);
@@ -630,7 +684,7 @@
     profile.room.state = "ended";
     if (profile.isAdmin) {
       clearContainer({
-        id: "startBtnContainer"
+        id: "startBtnContainer",
       });
       const revealBtn = createRevealBtn();
       $("#startBtnContainer").append(revealBtn);
@@ -644,19 +698,21 @@
   }
 
   function revealScores(scores) {
-    const ownScore = scores.find(score => score.id === profile.id).score;
+    const ownScore = scores.find((score) => score.id === profile.id).score;
     profile.score = ownScore;
 
     if (profile.isAdmin) {
-      scores.forEach(score => {
-        const user = profile.room.participants.find(user => user.id === score.id);
+      scores.forEach((score) => {
+        const user = profile.room.participants.find(
+          (user) => user.id === score.id,
+        );
         user.score = score.score;
 
         $("#stateCell").text("Score");
         $(`tr#${user.id} .jt-ready-display .jt-font`).text(user.score);
       });
       clearContainer({
-        id: "startBtnContainer"
+        id: "startBtnContainer",
       });
       setTimeout(() => {
         const restartBtn = createRestartBtn();
@@ -666,21 +722,33 @@
       profile.room.participants = scores;
 
       clearPlayGround();
-      const dataTable = createDataTable([
-        ["#", "Name", {
-          content: "Score",
-          id: "stateCell"
-        }]
-      ].concat(profile.room.participants.map((el, index) => [{
-        content: index + 1,
-        class: "jt-list-index"
-      }, {
-        content: el.username,
-        rowId: el.id
-      }, {
-        html: createScoreDisplay(el.score),
-        class: "jt-ready-display"
-      }])));
+      const dataTable = createDataTable(
+        [
+          [
+            "#",
+            "Name",
+            {
+              content: "Score",
+              id: "stateCell",
+            },
+          ],
+        ].concat(
+          profile.room.participants.map((el, index) => [
+            {
+              content: index + 1,
+              class: "jt-list-index",
+            },
+            {
+              content: el.username,
+              rowId: el.id,
+            },
+            {
+              html: createScoreDisplay(el.score),
+              class: "jt-ready-display",
+            },
+          ]),
+        ),
+      );
 
       const panelTable = $("<table class='jt-table-panel'>");
       $("#playGround").append(panelTable);
@@ -692,7 +760,7 @@
       tableRow.append(tableCellRight);
 
       tableCellLeft.append(dataTable);
-      
+
       const leaveBtn = createLeaveBtn();
       tableCellRight.append(leaveBtn);
     }
@@ -713,11 +781,11 @@
   }
 
   function handleStartBtn() {
-    if (!profile.room.participants.map(el => el.ready).includes(0)) {
+    if (!profile.room.participants.map((el) => el.ready).includes(0)) {
       socket.emit("start game");
     } else {
       handleError("not all players in room are ready to start");
-    };
+    }
   }
 
   function handleCreateBtn() {
@@ -742,7 +810,7 @@
 
   function handleRestartBtn() {
     socket.emit("restart game");
-  };
+  }
 
   function handleChangeBtn() {
     if (profile.room.state === "waiting") {
@@ -753,23 +821,22 @@
     } else if (profile.room.state === "changing") {
       socket.emit("change quiz", location.pathname);
     }
-  };
+  }
 
   function handleCopyBtn() {
     navigator.clipboard.writeText(profile.room.code);
-  };
+  }
 
   function handleReadyBtn(btn) {
     if (profile.ready) {
       profile.ready = 0;
     } else {
       profile.ready = 1;
-    };
+    }
 
     socket.emit("ready");
     changeReadyDisplay();
-  };
-
+  }
 
   // error functions
 
@@ -789,7 +856,7 @@
 
   // socket.on functions
 
-  socket.on("found error", msg => {
+  socket.on("found error", (msg) => {
     handleError(msg);
   });
 
@@ -804,7 +871,7 @@
     displayLoginForm();
   });
 
-  socket.on("new user", user => {
+  socket.on("new user", (user) => {
     if (profile.isAdmin) {
       profile.room.participants.push(user);
       addPlayerList(user);
@@ -820,14 +887,16 @@
     setReadyState(userId, 0);
   });
 
-  socket.on("user disconnected", user => {
+  socket.on("user disconnected", (user) => {
     playerDisconnected(user);
   });
 
-  socket.on("quiz changed", quiz => {
+  socket.on("quiz changed", (quiz) => {
     profile.room.quiz = quiz;
     if (profile.isAdmin) {
-      profile.room.participants.map(el => el.id !== profile.id ? el.ready = 0 : el.ready = 1);
+      profile.room.participants.map((el) =>
+        el.id !== profile.id ? (el.ready = 0) : (el.ready = 1),
+      );
       profile.room.state = "waiting";
     } else {
       profile.ready = 0;
@@ -856,6 +925,6 @@
   function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
+    if (parts.length === 2) return parts.pop().split(";").shift();
   }
 })();
