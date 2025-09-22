@@ -1,10 +1,10 @@
 const express = require("express");
 const app = express();
-const path = require("path");
-const http = require("http");
+const path = require("node:path");
+const http = require("node:http");
 require("dotenv").config();
-const crypto = require('crypto');
-const fs = require("fs");
+const crypto = require("node:crypto");
+const fs = require("node:fs");
 
 // database
 const rooms = require("./services/rooms");
@@ -16,34 +16,40 @@ const { loginSchema, roomSchema, userSchema } = require("./services/schemas");
 
 //socket.io
 const server = http.createServer(app);
-const {
-  Server
-} = require("socket.io");
+const { Server } = require("socket.io");
 const io = new Server(server);
 
 // serve static files
 app.use("/assets", express.static(path.join(__dirname, "./assets")));
 
 app.get("/jetpunk_together", (req, res) => {
-  fs.readFile(path.join(__dirname, "assets", "tampermonkey", "index.user.js"), 'utf8', (err, data) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-    res.setHeader('Content-Type', 'text/javascript');
-    res.send(data.replaceAll("YOUR_SERVER_URL", process.env.HOST_SERVER));
-  });
+  fs.readFile(
+    path.join(__dirname, "assets", "tampermonkey", "index.user.js"),
+    "utf8",
+    (err, data) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      res.setHeader("Content-Type", "text/javascript");
+      res.send(data.replaceAll("YOUR_SERVER_URL", process.env.HOST_SERVER));
+    },
+  );
 });
 
 app.get("/jetpunk_together.user.js", (req, res) => {
-  fs.readFile(path.join(__dirname, "assets", "tampermonkey", "index.user.js"), 'utf8', (err, data) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-    res.setHeader('Content-Type', 'text/javascript');
-    res.send(data.replaceAll("YOUR_SERVER_URL", process.env.HOST_SERVER));
-  });
+  fs.readFile(
+    path.join(__dirname, "assets", "tampermonkey", "index.user.js"),
+    "utf8",
+    (err, data) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      res.setHeader("Content-Type", "text/javascript");
+      res.send(data.replaceAll("YOUR_SERVER_URL", process.env.HOST_SERVER));
+    },
+  );
 });
 
 server.listen(process.env.PORT, () => {
@@ -53,12 +59,11 @@ server.listen(process.env.PORT, () => {
 var disconnectedUsers = [];
 
 io.on("connection", (socket) => {
-
   socket.profile = {};
 
   socket.on("login", (sessionId) => {
     const validation = loginSchema.validate({
-      sessionId: sessionId
+      sessionId: sessionId,
     });
 
     if (validation.error) {
@@ -73,12 +78,12 @@ io.on("connection", (socket) => {
     socket.profile.sessionId = sessionId;
 
     // check if user disconnected less than 5 seconds ago
-    const disconnectedSessionIds = disconnectedUsers.map(el => el.sessionId);
+    const disconnectedSessionIds = disconnectedUsers.map((el) => el.sessionId);
     if (disconnectedSessionIds.includes(sessionId)) {
-      const index = disconnectedSessionIds.indexOf(sessionId)
+      const index = disconnectedSessionIds.indexOf(sessionId);
       clearTimeout(disconnectedUsers[index].timeout);
       disconnectedUsers.splice(index, 1);
-    };
+    }
 
     const user = users.getUser(sessionId);
     if (user) {
@@ -91,23 +96,30 @@ io.on("connection", (socket) => {
         socket.profile.roomCode = ownRoom.room;
         socket.profile.isAdmin = true;
 
-        socket.emit("connected to room", {
-          id: user.id,
-          username: user.username,
-          isAdmin: true,
-          ready: 1
-        }, {
-          code: ownRoom.room,
-          quiz: ownRoom.quiz,
-          state: ownRoom.state,
-          participants: participants.map(el => ({
-            id: el.id,
-            username: el.username,
-            ready: el.ready
-          }))
-        });
+        socket.emit(
+          "connected to room",
+          {
+            id: user.id,
+            username: user.username,
+            isAdmin: true,
+            ready: 1,
+          },
+          {
+            code: ownRoom.room,
+            quiz: ownRoom.quiz,
+            state: ownRoom.state,
+            participants: participants.map((el) => ({
+              id: el.id,
+              username: el.username,
+              ready: el.ready,
+            })),
+          },
+        );
       } else if (ownRoom && rooms.gameStarted(ownRoom.id)) {
-        socket.emit("found error", "the game you want to join has already started");
+        socket.emit(
+          "found error",
+          "the game you want to join has already started",
+        );
       } else {
         const joinedRoom = rooms.getRoomById(user.room);
         if (!rooms.gameStarted(joinedRoom.id)) {
@@ -117,31 +129,37 @@ io.on("connection", (socket) => {
           socket.profile.roomCode = joinedRoom.room;
           socket.profile.isAdmin = false;
 
-          socket.emit("connected to room", {
-            id: user.id,
-            username: user.username,
-            isAdmin: false,
-            ready: user.ready
-          }, {
-            code: joinedRoom.room,
-            quiz: joinedRoom.quiz,
-            state: joinedRoom.state
-          });
+          socket.emit(
+            "connected to room",
+            {
+              id: user.id,
+              username: user.username,
+              isAdmin: false,
+              ready: user.ready,
+            },
+            {
+              code: joinedRoom.room,
+              quiz: joinedRoom.quiz,
+              state: joinedRoom.state,
+            },
+          );
         } else {
-          socket.emit("found error", "the game you want to join has already started");
+          socket.emit(
+            "found error",
+            "the game you want to join has already started",
+          );
         }
       }
-
     } else {
       socket.emit("log in");
-    };
+    }
   });
 
   socket.on("join room", (name, roomId, quiz) => {
     const validation = userSchema.validate({
       name: name,
       roomId: roomId,
-      quiz: quiz
+      quiz: quiz,
     });
 
     if (validation.error) {
@@ -158,13 +176,18 @@ io.on("connection", (socket) => {
           if (!room) {
             socket.emit("found error", "room not found");
           } else if (!rooms.gameStarted(room.id)) {
-            const newUser = users.newUser(socket.profile.sessionId, data.name, room.id, 0);
+            const newUser = users.newUser(
+              socket.profile.sessionId,
+              data.name,
+              room.id,
+              0,
+            );
 
-            io.to(data.roomId).emit("new user", ({
+            io.to(data.roomId).emit("new user", {
               id: newUser.lastInsertRowid,
               username: data.name,
-              ready: 0
-            }));
+              ready: 0,
+            });
 
             socket.join(data.roomId);
             socket.profile.id = newUser.lastInsertRowid;
@@ -172,18 +195,25 @@ io.on("connection", (socket) => {
             socket.profile.roomCode = data.roomId;
             socket.profile.isAdmin = false;
 
-            socket.emit("connected to room", {
-              id: newUser.lastInsertRowid,
-              username: data.name,
-              isAdmin: false,
-              ready: 0
-            }, {
-              code: room.room,
-              quiz: room.quiz,
-              state: room.state
-            });
+            socket.emit(
+              "connected to room",
+              {
+                id: newUser.lastInsertRowid,
+                username: data.name,
+                isAdmin: false,
+                ready: 0,
+              },
+              {
+                code: room.room,
+                quiz: room.quiz,
+                state: room.state,
+              },
+            );
           } else {
-            socket.emit("found error", "the game you want to join has already started");
+            socket.emit(
+              "found error",
+              "the game you want to join has already started",
+            );
           }
         } else {
           socket.emit("found error", "already logged in");
@@ -198,7 +228,7 @@ io.on("connection", (socket) => {
   socket.on("create room", (name, quiz) => {
     const validation = roomSchema.validate({
       name: name,
-      quiz: quiz
+      quiz: quiz,
     });
 
     if (validation.error) {
@@ -211,13 +241,24 @@ io.on("connection", (socket) => {
       try {
         const data = validation.value;
         if (!check.isQuiz(data.quiz)) {
-          socket.emit("found error", "please navigate to a quiz to create a room");
+          socket.emit(
+            "found error",
+            "please navigate to a quiz to create a room",
+          );
           return false;
         }
         const room = crypto.randomBytes(3).toString("hex").toUpperCase();
-        const newUser = users.newUser(socket.profile.sessionId, data.name, "", 1);
+        const newUser = users.newUser(
+          socket.profile.sessionId,
+          data.name,
+          "",
+          1,
+        );
         const newRoom = rooms.newRoom(newUser.lastInsertRowid, room, data.quiz);
-        const updatedUser = rooms.updateUserRoom(newUser.lastInsertRowid, newRoom.lastInsertRowid);
+        const updatedUser = rooms.updateUserRoom(
+          newUser.lastInsertRowid,
+          newRoom.lastInsertRowid,
+        );
         const participants = rooms.getParticipants(newRoom.lastInsertRowid);
 
         socket.join(room);
@@ -227,21 +268,25 @@ io.on("connection", (socket) => {
         socket.profile.isAdmin = true;
 
         // let user know about connection
-        socket.emit("connected to room", {
-          id: newUser.lastInsertRowid,
-          username: data.name,
-          isAdmin: true,
-          ready: 1
-        }, {
-          code: room,
-          quiz: data.quiz,
-          state: "waiting",
-          participants: participants.map(el => ({
-            id: el.id,
-            username: el.username,
-            ready: el.ready
-          }))
-        });
+        socket.emit(
+          "connected to room",
+          {
+            id: newUser.lastInsertRowid,
+            username: data.name,
+            isAdmin: true,
+            ready: 1,
+          },
+          {
+            code: room,
+            quiz: data.quiz,
+            state: "waiting",
+            participants: participants.map((el) => ({
+              id: el.id,
+              username: el.username,
+              ready: el.ready,
+            })),
+          },
+        );
       } catch (error) {
         console.log(error);
         socket.emit("found error", "error while storing user and room data");
@@ -271,10 +316,12 @@ io.on("connection", (socket) => {
         rooms.setRoomState(socket.profile.roomId, "started");
 
         io.to(socket.profile.roomCode).emit("game started");
-
       } catch (error) {
         console.log(error);
-        socket.emit("found error", "error while changing state of game to 'started'");
+        socket.emit(
+          "found error",
+          "error while changing state of game to 'started'",
+        );
       }
     } else {
       console.log("not all players in room are ready to start");
@@ -289,11 +336,14 @@ io.on("connection", (socket) => {
       }
     } catch (error) {
       console.log(error);
-      socket.emit("found error", "error while changing state of game to 'changing'");
+      socket.emit(
+        "found error",
+        "error while changing state of game to 'changing'",
+      );
     }
   });
 
-  socket.on("change quiz", quiz => {
+  socket.on("change quiz", (quiz) => {
     try {
       if (check.isQuiz(quiz)) {
         rooms.setRoomQuiz(socket.profile.roomId, quiz);
@@ -303,7 +353,10 @@ io.on("connection", (socket) => {
 
         io.to(socket.profile.roomCode).emit("quiz changed", quiz);
       } else {
-        socket.emit("found error", "please navigate to a quiz and press 'Change quiz'");
+        socket.emit(
+          "found error",
+          "please navigate to a quiz and press 'Change quiz'",
+        );
       }
     } catch (error) {
       console.log(error);
@@ -314,7 +367,7 @@ io.on("connection", (socket) => {
   socket.on("leave game", () => {
     io.to(socket.profile.roomCode).emit("user disconnected", {
       id: socket.profile.id,
-      isAdmin: socket.profile.isAdmin
+      isAdmin: socket.profile.isAdmin,
     });
 
     if (socket.profile.isAdmin) {
@@ -336,14 +389,21 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     if (socket.profile.roomCode) {
       // set ready state to 0
-      if (!socket.profile.isAdmin && users.getUserReady(socket.profile.sessionId) && !rooms.gameStarted(socket.profile.roomId)) {
+      if (
+        !socket.profile.isAdmin &&
+        users.getUserReady(socket.profile.sessionId) &&
+        !rooms.gameStarted(socket.profile.roomId)
+      ) {
         users.setReadyState(socket.profile.sessionId, 0);
         io.to(socket.profile.roomCode).emit("user unready", socket.profile.id);
-      } else if (users.getUserReady(socket.profile.sessionId) && rooms.gameStarted(socket.profile.roomId)) {
+      } else if (
+        users.getUserReady(socket.profile.sessionId) &&
+        rooms.gameStarted(socket.profile.roomId)
+      ) {
         // remove user or host and the connected users instantly if the game has started;
         io.to(socket.profile.roomCode).emit("user disconnected", {
           id: socket.profile.id,
-          isAdmin: socket.profile.isAdmin
+          isAdmin: socket.profile.isAdmin,
         });
 
         if (socket.profile.isAdmin) {
@@ -355,7 +415,7 @@ io.on("connection", (socket) => {
 
         if (check.usersFinished(socket.profile.roomId)) {
           rooms.setRoomState(socket.profile.roomId, "ended");
-    
+
           io.to(socket.profile.roomCode).emit("game has ended");
         }
 
@@ -369,7 +429,7 @@ io.on("connection", (socket) => {
           try {
             io.to(socket.profile.roomCode).emit("user disconnected", {
               id: socket.profile.id,
-              isAdmin: socket.profile.isAdmin
+              isAdmin: socket.profile.isAdmin,
             });
 
             if (socket.profile.isAdmin) {
@@ -382,14 +442,14 @@ io.on("connection", (socket) => {
             console.log(error);
             socket.emit("found error", "error while disconnecting user");
           }
-        }, 5000)
+        }, 5000),
       });
     }
   });
 
   socket.emit("reset profile", () => {
     socket.profile = {
-      sessionId: socket.profile.sessionId
+      sessionId: socket.profile.sessionId,
     };
   });
 
@@ -428,3 +488,4 @@ io.on("connection", (socket) => {
     }
   });
 });
+

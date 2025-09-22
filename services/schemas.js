@@ -1,12 +1,7 @@
-const Joi = require('joi');
+const Joi = require("joi");
 
 const userSchema = Joi.object({
-  name: Joi.string()
-    .trim()
-    .alphanum()
-    .min(3)
-    .max(30)
-    .required(),
+  name: Joi.string().trim().alphanum().min(3).max(30).required(),
   roomId: Joi.string()
     .trim()
     .alphanum()
@@ -18,37 +13,29 @@ const userSchema = Joi.object({
     .trim()
     .required()
     .pattern(/^[a-zA-Z0-9/-]+$/, {
-      name: 'quiz name'
+      name: "quiz name",
     })
-    .label("quiz")
+    .label("quiz"),
 });
 
 const roomSchema = Joi.object({
-  name: Joi.string()
-    .trim()
-    .alphanum()
-    .min(3)
-    .max(30)
-    .required(),
+  name: Joi.string().trim().alphanum().min(3).max(30).required(),
   quiz: Joi.string()
     .trim()
     .required()
     .pattern(/^[a-zA-Z0-9/-]+$/, {
-      name: 'quiz name'
+      name: "quiz name",
     })
-    .label("quiz")
+    .label("quiz"),
 });
 
 const loginSchema = Joi.object({
-  sessionId: Joi.string()
-    .trim()
-    .alphanum()
-    .required()
-    .label("session id")
+  sessionId: Joi.string().trim().alphanum().required().label("session id"),
 });
 
 module.exports = {
   userSchema: userSchema,
   roomSchema: roomSchema,
-  loginSchema: loginSchema
-}
+  loginSchema: loginSchema,
+};
+

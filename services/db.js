@@ -1,5 +1,5 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const Database = require("better-sqlite3");
+const path = require("node:path");
 
 const db = new Database(path.join(__dirname, "..", "database", "database.db"));
 
@@ -15,9 +15,9 @@ function run(sql, params) {
   return db.prepare(sql).run(params);
 }
 
-module.exports = Object.assign(
-  module.exports, {
-    query,
-    run,
-    getOne
-  });
+module.exports = Object.assign(module.exports, {
+  query,
+  run,
+  getOne,
+});
+
