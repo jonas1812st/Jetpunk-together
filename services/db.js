@@ -3,21 +3,25 @@ const path = require("node:path");
 
 const db = new Database(path.join(__dirname, "..", "database", "database.db"));
 
-function query(sql, params) {
+function query(sql, params = null) {
   return db.prepare(sql).all(params);
 }
 
-function getOne(sql, params) {
+function getOne(sql, params = null) {
   return db.prepare(sql).get(params);
 }
 
-function run(sql, params) {
+function run(sql, params = null) {
   return db.prepare(sql).run(params);
 }
 
+function runRaw(sql) {
+  return db.prepare(sql).run();
+}
+
 module.exports = Object.assign(module.exports, {
+  runRaw,
   query,
   run,
   getOne,
 });
-
