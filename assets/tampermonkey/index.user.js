@@ -60,6 +60,8 @@
                   possible: possible,
                 });
 
+                $("#retake-quiz").remove();
+
                 if (!profile.isAdmin) {
                   clearPlayGround();
                   displayMsg("Finished. Waiting for others...");
