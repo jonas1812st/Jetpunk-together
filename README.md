@@ -8,6 +8,7 @@ This project allows anyone to host their own server, enabling them to solve quiz
 - [Installation](#🛠️-installation)
 - [Usage](#🚀-usage)
 - [Tampermonkey Script Installation](#tampermonkey-script-installation)
+- [Docker Deployment](#🐳-docker-deployment)
 
 ## 📋 Requirements
 
@@ -57,4 +58,67 @@ npm run start
 
 1. Go to Jetpunk.com
 2. A blue box will appear at the top. This is where all the multiplayer action happens.
+
+## 🐳 Docker Deployment
+
+You can deploy this project using Docker for easy setup and deployment.
+
+### Building the Docker Image:
+
+#### Method 1: Using the build script (Recommended)
+```bash
+./build-docker.sh
+```
+
+#### Method 2: Manual build
+```bash
+DOCKER_BUILDKIT=0 docker build -t jetpunk-together .
+```
+
+**Note:** We use `DOCKER_BUILDKIT=0` to avoid a known issue with BuildKit and npm install timing out during build.
+
+### Running with Docker:
+
+#### Method 1: Using docker run
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e PORT=3000 \
+  -e HOST_SERVER="http://your-domain.com:3000" \
+  -v $(pwd)/database:/app/database \
+  --name jetpunk-together \
+  jetpunk-together
+```
+
+#### Method 2: Using docker-compose (Recommended)
+
+1. Create or modify `.env` file with your settings:
+```bash
+PORT=3000
+HOST_SERVER="http://your-domain.com:3000"
+```
+
+2. Start the container:
+```bash
+docker-compose up -d
+```
+
+3. Stop the container:
+```bash
+docker-compose down
+```
+
+### Docker Environment Variables:
+
+- `PORT`: The port the server runs on (default: 3000)
+- `HOST_SERVER`: The public URL where your server is accessible (e.g., `http://your-domain.com:3000`)
+
+### Accessing the Tampermonkey Script:
+
+After starting the Docker container, go to:
+```
+http://your-domain.com:3000/jetpunk_together.user.js
+```
+
+Tampermonkey will prompt you to install the script.
 
