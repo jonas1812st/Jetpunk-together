@@ -16,7 +16,7 @@
 // @run-at       document-end
 // ==/UserScript==
 
-(function () {
+(async function () {
   "use strict";
 
   // load remote css
@@ -60,7 +60,7 @@
                   possible: possible,
                 });
 
-                $("#retake-quiz").remove();
+                $("#retake-quiz").attr("disabled", true);
 
                 if (!profile.isAdmin) {
                   clearPlayGround();
@@ -585,100 +585,94 @@
     }, 1000);
   }
 
-  function startGame() {
+  async function startGame() {
     profile.room.state = "started";
     if (!profile.isAdmin) {
       clearPlayGround();
       displayMsg("Starting game...");
 
-      setTimeout(() => {
-        clearPlayGround();
-        displayMsg("3...");
+      await wait(1500);
 
-        setTimeout(() => {
-          clearPlayGround();
-          displayMsg("2...");
+      clearPlayGround();
+      displayMsg("3...");
 
-          setTimeout(() => {
-            clearPlayGround();
-            displayMsg("1...");
+      await wait(1500);
 
-            setTimeout(() => {
-              clearPlayGround();
-              displayMsg("Good luck!");
+      clearPlayGround();
+      displayMsg("2...");
 
-              setTimeout(() => {
-                clearPlayGround();
-                const leaveBtn = createLeaveBtn();
-                $("#playGround").append(leaveBtn);
-              }, 1000);
+      await wait(1500);
 
-              $("#start-button").click();
-            }, 1500);
-          }, 1500);
-        }, 1500);
-      }, 1500);
+      clearPlayGround();
+      displayMsg("1...");
+
+      await wait(1500);
+
+      clearPlayGround();
+      displayMsg("Good luck!");
+      $("#start-button").click();
+
+      await wait(1000);
+
+      clearPlayGround();
+      const leaveBtn = createLeaveBtn();
+      $("#playGround").append(leaveBtn);
     } else {
-      clearContainer({
-        id: "startBtnContainer",
-      });
+      const clearTimingContainer = () =>
+        clearContainer({
+          id: "startBtnContainer",
+        });
+
+      clearTimingContainer();
       displayMsgIn({
         id: "startBtnContainer",
         msg: "Starting game...",
       });
 
-      setTimeout(() => {
-        clearContainer({
-          id: "startBtnContainer",
-        });
-        displayMsgIn({
-          id: "startBtnContainer",
-          msg: "3...",
-        });
+      $("#changeQuizBtn").prop("disabled", true);
+      $("#changeQuizBtn").addClass("jt-btn-disabled");
 
-        setTimeout(() => {
-          clearContainer({
-            id: "startBtnContainer",
-          });
-          displayMsgIn({
-            id: "startBtnContainer",
-            msg: "2...",
-          });
+      await wait(1500);
 
-          setTimeout(() => {
-            clearContainer({
-              id: "startBtnContainer",
-            });
-            displayMsgIn({
-              id: "startBtnContainer",
-              msg: "1...",
-            });
+      clearTimingContainer();
+      displayMsgIn({
+        id: "startBtnContainer",
+        msg: "3...",
+      });
 
-            setTimeout(() => {
-              clearContainer({
-                id: "startBtnContainer",
-              });
-              displayMsgIn({
-                id: "startBtnContainer",
-                msg: "Good Luck!",
-              });
+      await wait(1500);
 
-              $("#start-button").click();
+      clearTimingContainer();
+      displayMsgIn({
+        id: "startBtnContainer",
+        msg: "2...",
+      });
 
-              $("#changeQuizBtn").prop("disabled", true);
-              $("#changeQuizBtn").addClass("jt-btn-disabled");
+      await wait(1500);
 
-              clearContainer({
-                class: "jt-ready-display",
-              });
-              displayMsgIn({
-                class: "jt-ready-display",
-                msg: "<span class='jt-font'>...</span>",
-              });
-            }, 1500);
-          }, 1500);
-        }, 1500);
-      }, 1500);
+      clearTimingContainer();
+      displayMsgIn({
+        id: "startBtnContainer",
+        msg: "1...",
+      });
+
+      await wait(1000);
+
+      clearTimingContainer();
+      displayMsgIn({
+        id: "startBtnContainer",
+        msg: "Good Luck!",
+      });
+
+      $("#start-button").click();
+
+      clearContainer({
+        class: "jt-ready-display",
+      });
+      displayMsgIn({
+        class: "jt-ready-display",
+        msg: "<span class='jt-font'>...</span>",
+      });
     }
   }
 
@@ -928,5 +922,11 @@
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(";").shift();
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 })();
