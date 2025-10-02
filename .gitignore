@@ -1,10 +1,2 @@
 node_modules
 issues.txt
-
-# TypeScript
-dist/
-*.tsbuildinfo
-
-# Environment files
-.env.local
-.env.production
