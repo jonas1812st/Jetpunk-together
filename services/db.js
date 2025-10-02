@@ -15,13 +15,18 @@ function run(sql, params = null) {
   return db.prepare(sql).run(params);
 }
 
-function runRaw(sql) {
+function runWithoutParams(sql) {
   return db.prepare(sql).run();
 }
 
+function closeConnection() {
+  return db.close();
+}
+
 module.exports = Object.assign(module.exports, {
-  runRaw,
+  runWithoutParams,
   query,
   run,
   getOne,
+  closeConnection,
 });
