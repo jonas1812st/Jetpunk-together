@@ -1,0 +1,11 @@
+services:
+  jetpunk-together:
+    build: .
+    ports:
+      - "${PORT}:3412"
+    environment:
+      - PORT=${PORT}
+      - HOST_SERVER=${HOST_SERVER}
+    volumes:
+      - ./database:/app/database
+    restart: unless-stopped
