@@ -6,9 +6,9 @@ This project allows anyone to host their own server, enabling them to solve quiz
 
 - [Requirements](#📋-requirements)
 - [Installation](#🛠️-installation)
+- [Docker Deployment](#🐳-docker-deployment)
 - [Usage](#🚀-usage)
 - [Tampermonkey Script Installation](#tampermonkey-script-installation)
-- [Docker Deployment](#🐳-docker-deployment)
 
 ## 📋 Requirements
 
@@ -82,9 +82,9 @@ DOCKER_BUILDKIT=0 docker build -t jetpunk-together .
 #### Method 1: Using docker run
 ```bash
 docker run -d \
-  -p 3000:3000 \
-  -e PORT=3000 \
-  -e HOST_SERVER="http://your-domain.com:3000" \
+  -p 3412:3412 \
+  -e PORT=3412 \
+  -e HOST_SERVER="http://your-domain.com:3412" \
   -v $(pwd)/database:/app/database \
   --name jetpunk-together \
   jetpunk-together

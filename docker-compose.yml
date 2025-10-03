@@ -2,10 +2,10 @@ services:
   jetpunk-together:
     build: .
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT}:3412"
     environment:
-      - PORT=${PORT:-3000}
-      - HOST_SERVER=${HOST_SERVER:-http://localhost:3000}
+      - PORT=${PORT}
+      - HOST_SERVER=${HOST_SERVER}
     volumes:
       - ./database:/app/database
     restart: unless-stopped
